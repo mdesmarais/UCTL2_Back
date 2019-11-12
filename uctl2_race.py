@@ -118,14 +118,19 @@ def readRaceFile(filePath, loopTime):
                         continue
 
                     # Computing some estimations : average pace, covered distance since the last loop
-                    pace = splitTimes[currentSegmentId] * 1000 / segmentDistanceFromStart
-                    averageSpeed = segmentDistanceFromStart / splitTimes[currentSegmentId]
-                    stepDistance = averageSpeed * loopTime
+                    if segmentDistanceFromStart > 0:
+                        pace = splitTimes[currentSegmentId] * 1000 / segmentDistanceFromStart
+                        averageSpeed = segmentDistanceFromStart / splitTimes[currentSegmentId]
+                        stepDistance = averageSpeed * loopTime
+                    else:
+                        pace = 0
+                        stepDistance = 0
 
                     teams.append({
                         'bibNumber': bibNumber,
                         'pace': pace,
-                        'stepDistance': stepDistance
+                        'stepDistance': stepDistance,
+                        'segmentDistanceFromStart': segmentDistanceFromStart
                     })
 
                 except KeyError as e:
