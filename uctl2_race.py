@@ -1,25 +1,19 @@
 import csv
 import json
+import logging
 import math
 import os
-import requests
-import time
 import sys
+import time
+import urllib
 
-try:
-    import api_config as cfg
-except ImportError:
-    print('You must create an api_config module')
-    sys.exit(-1)
+import requests
 
-# =======================
-# == Script parameters ==
-# =======================
-
-REQUESTS_DELAY = 2 # In seconds
-RACE_FILE_PATH = 'C:\\Users\\Maxime\\IdeaProjects\\UCTL2\\race.csv'
-MAX_NETWORK_ERRORS = 5
 DEBUG_DATA_SENT = True
+MAX_NETWORK_ERRORS = 10
+REQUESTS_DELAY = 10
+
+logger = logging.getLogger('Race')
 
 
 class RaceStatus:
@@ -72,6 +66,51 @@ class RaceState:
         """
         self.lastStatus = self.status
         self.status = status
+
+
+def broadcastRace(config):
+    """
+        Broadcasts the state of the race from a race file
+
+        :param config: a valid configuration
+        :ptype config: Config | dict
+    """
+    networkErrors = 0
+    loopTime = 0
+    startTime = time.time()
+
+    race = None
+    raceFile = config['raceFile']
+
+    baseUrl = config['api']['baseUrl']
+    updateRaceStatus = config['api']['actions']['updateRaceStatus']
+    updateTeams = config['api']['actions']['updateTeams']
+
+    while race is None or not race.status == RaceStatus.FINISHED:
+        time.sleep(REQUESTS_DELAY)
+        loopTime = int(time.time() - startTime)
+        startTime = time.time()
+        race = readRaceStateFromFile(raceFile, loopTime, race)
+
+        if race is None:
+            print('The given race file does not contain any teams')
+            break
+
+        if race.statusChanged():
+            print('New race status :', race.status)
+        
+        if race.statusChanged() and not sendPostRequest(baseUrl, updateRaceStatus, 'status', race.status):
+            networkErrors += 1
+        
+        if sendPostRequest(baseUrl, updateTeams, 'teams', race.teams) is False:
+            networkErrors += 1
+        
+        # Prevents an infinite loop if the server is down or does not responding correctly
+        if networkErrors >= MAX_NETWORK_ERRORS:
+            print('Script terminated because too many network errors occured')
+            break
+    
+    logger.info('End of the broadcast')
 
 
 def computeRaceStatus(segmentsRead, totalSegments):
@@ -142,42 +181,6 @@ def readSegmentDistance(record, segmentId):
             return False
 
     return False
-
-
-def readSplitTimes(record):
-    """
-        Extracts all split times from a line of a csv file
-
-        A segment that did not have been exceeded by the team is represented by a split time of -1.
-        The split times list only contains times of exceeded segments.
-        If a conversion error occured, then False is returned.
-
-        :param record: line to extract split times
-        :ptype record: dict
-        :return: a list of integers that correspond to an elapsed time in seconds
-        :rtype: int
-    """
-    splitTimes = []
-
-    try:
-        i = 0
-        # Retreiving all segments Si while Si is a valid key in record
-        while True:
-            segmentName = 'S%d' % (i, )
-            
-            value = int(record[segmentName])
-            if value >= 0:
-                splitTimes.append(value)
-                i += 1
-            else:
-                break
-    except KeyError:
-        pass
-    except ValueError:
-        print('Invalid conversion to integer for a split time')
-        return False
-    
-    return splitTimes
 
 
 def readRaceState(reader, loopTime, lastState):
@@ -281,18 +284,48 @@ def readRaceStateFromFile(filePath, loopTime, lastState):
     return raceState
 
 
-def sendRaceStatus(status):
-    return sendPostRequest('updateRaceStatus', 'status', status)
+def readSplitTimes(record):
+    """
+        Extracts all split times from a line of a csv file
+
+        A segment that did not have been exceeded by the team is represented by a split time of -1.
+        The split times list only contains times of exceeded segments.
+        If a conversion error occured, then False is returned.
+
+        :param record: line to extract split times
+        :ptype record: dict
+        :return: a list of integers that correspond to an elapsed time in seconds
+        :rtype: int
+    """
+    splitTimes = []
+
+    try:
+        i = 0
+        # Retreiving all segments Si while Si is a valid key in record
+        while True:
+            segmentName = 'S%d' % (i, )
+            
+            value = int(record[segmentName])
+            if value >= 0:
+                splitTimes.append(value)
+                i += 1
+            else:
+                break
+    except KeyError:
+        pass
+    except ValueError:
+        print('Invalid conversion to integer for a split time')
+        return False
+    
+    return splitTimes
 
 
-def sendTeams(teams):
-    return sendPostRequest('updateTeams', 'teams', teams)
-
-
-def sendPostRequest(action, key, data):
+def sendPostRequest(baseUrl, action, key, data):
     """
         Sends a post request to the api server
 
+        :param baseUrl: base address of the server
+        :ptype baseUrl: str
         :param action: relative url to the action
         :ptype action: str
         :param key: name of the parameter that contains data
@@ -303,10 +336,11 @@ def sendPostRequest(action, key, data):
         :rtype: bool
     """
     try:
-        r = requests.post(cfg.API_BASE_URL + cfg.API_ACTIONS[action], data={key: json.dumps(data)})
+        url = urllib.parse.urljoin(baseUrl, action)
+        r = requests.post(url, data={key: json.dumps(data)})
 
         if DEBUG_DATA_SENT:
-            print('Request sent to %s with data %s' % (r.url, data))
+            logger.debug('Request sent to %s with data %s' % (r.url, data))
         
         if not r.status_code == requests.codes.ok:
             print('Requests response error', r.status_code)
@@ -316,42 +350,3 @@ def sendPostRequest(action, key, data):
         return False
     
     return True
-
-
-if __name__ == '__main__':
-    if REQUESTS_DELAY <= 0:
-        raise ValueError('REQUESTS_DELAY must be positive !')
-
-    if MAX_NETWORK_ERRORS < 0:
-        raise ValueError('MAX_NETWORK_ERRORS must be greather than or equals to 0')
-
-    networkErrors = 0
-    loopTime = 0
-    startTime = time.time()
-
-    race = None
-
-    while race is None or not race.status == RaceStatus.FINISHED:
-        loopTime = int(time.time() - startTime)
-        startTime = time.time()
-        race = readRaceStateFromFile(RACE_FILE_PATH, loopTime, race)
-
-        if race is None:
-            print('The given race file does not contain any teams')
-            break
-
-        if race.statusChanged():
-            print('New race status :', race.status)
-        
-        if race.statusChanged() and not sendRaceStatus(race.status):
-            networkErrors += 1
-        
-        if sendTeams(race.teams) is False:
-            networkErrors += 1
-        
-        # Prevents an infinite loop if the server is down or does not responding correctly
-        if networkErrors >= MAX_NETWORK_ERRORS:
-            print('Script terminated because too many network errors occured')
-            break
-        else:
-            time.sleep(REQUESTS_DELAY)
