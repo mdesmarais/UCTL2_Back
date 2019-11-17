@@ -99,10 +99,17 @@ def broadcastRace(config):
         if race.statusChanged():
             print('New race status :', race.status)
         
-        if race.statusChanged() and not sendPostRequest(baseUrl, updateRaceStatus, 'status', race.status):
+        r = sendPostRequest(baseUrl, updateRaceStatus, {
+            'race': config['raceName'],
+            'status': race.status
+        })
+        if race.statusChanged() and not r:
             networkErrors += 1
         
-        if sendPostRequest(baseUrl, updateTeams, 'teams', race.teams) is False:
+        r = sendPostRequest(baseUrl, updateTeams, {
+            'teams': race.teams
+        })
+        if r is False:
             networkErrors += 1
         
         # Prevents an infinite loop if the server is down or does not responding correctly
@@ -320,7 +327,7 @@ def readSplitTimes(record):
     return splitTimes
 
 
-def sendPostRequest(baseUrl, action, key, data):
+def sendPostRequest(baseUrl, action, data):
     """
         Sends a post request to the api server
 
@@ -328,16 +335,18 @@ def sendPostRequest(baseUrl, action, key, data):
         :ptype baseUrl: str
         :param action: relative url to the action
         :ptype action: str
-        :param key: name of the parameter that contains data
-        :ptype key: str
         :param data: data to send
         :ptype data: dict
         :return: True if the request was sent correctly, False if not
         :rtype: bool
     """
+    dataJson = {}
+    for key, value in data.items():
+        dataJson[key] = json.dumps(value)
+
     try:
         url = urllib.parse.urljoin(baseUrl, action)
-        r = requests.post(url, data={key: json.dumps(data)})
+        r = requests.post(url, data=dataJson)
 
         if DEBUG_DATA_SENT:
             logger.debug('Request sent to %s with data %s' % (r.url, data))

@@ -153,6 +153,7 @@ def sendRace(race, baseUrl, action):
 
         if not r.status_code == requests.codes.ok:
             print('Requests response error:', r.status_code)
+            print(r.content)
             return False
     except requests.exceptions.RequestException as e:
         print('Something bad happened when trying to send a request\n->', e)
