@@ -1,7 +1,7 @@
 
 CONFIG_SCHEMA = {
     'type': 'object',
-    'required': ['raceName', 'startTime', 'routeFile', 'raceFile', 'simPath', 'segments', 'teams', 'api'],
+    'required': ['raceName', 'startTime', 'routeFile', 'raceFile', 'simPath', 'tickStep', 'fileUpdateRate', 'segments', 'teams', 'api'],
     'properties': {
         'raceName': {
             'type': 'string',
@@ -18,6 +18,14 @@ CONFIG_SCHEMA = {
         },
         'simPath': {
             'type': 'string'
+        },
+        'tickStep': {
+            'type': 'integer',
+            'minimum': 1
+        },
+        'fileUpdateRate': {
+            'type': 'integer',
+            'minimum': 1
         },
         'segments': {
             'type': 'array',
