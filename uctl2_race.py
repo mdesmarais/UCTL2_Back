@@ -11,7 +11,7 @@ import requests
 
 DEBUG_DATA_SENT = True
 MAX_NETWORK_ERRORS = 10
-REQUESTS_DELAY = 10
+REQUESTS_DELAY = 3
 
 logger = logging.getLogger('Race')
 
@@ -99,12 +99,14 @@ def broadcastRace(config):
         if race.statusChanged():
             print('New race status :', race.status)
         
-        r = sendPostRequest(baseUrl, updateRaceStatus, {
-            'race': config['raceName'],
-            'status': race.status
-        })
-        if race.statusChanged() and not r:
-            networkErrors += 1
+        if race.statusChanged():
+            r = sendPostRequest(baseUrl, updateRaceStatus, {
+                'race': config['raceName'],
+                'status': race.status
+            })
+            if not r:
+                networkErrors += 1
+            
         
         r = sendPostRequest(baseUrl, updateTeams, {
             'teams': race.teams
@@ -231,6 +233,7 @@ def readRaceState(reader, loopTime, lastState):
         pace = 0
         stepDistance = 0
         segmentDistanceFromStart = 0
+        averageSpeed = 0
             
         if len(splitTimes) > 0:
             currentSegmentId = len(splitTimes) - 1
@@ -243,7 +246,8 @@ def readRaceState(reader, loopTime, lastState):
             # Computing some estimations : average pace, covered distance since the last loop
             if segmentDistanceFromStart > 0:
                 pace = splitTimes[currentSegmentId] * 1000 / segmentDistanceFromStart
-                averageSpeed = segmentDistanceFromStart / splitTimes[currentSegmentId]
+                if splitTimes[currentSegmentId] > 0:
+                    averageSpeed = segmentDistanceFromStart / splitTimes[currentSegmentId]
                 stepDistance = averageSpeed * loopTime
 
         raceState.addTeam({
