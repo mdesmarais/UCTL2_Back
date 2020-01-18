@@ -9,63 +9,13 @@ import urllib
 
 import requests
 
+from race_state import RaceState, RaceStatus, computeRaceStatus
+
 DEBUG_DATA_SENT = True
 MAX_NETWORK_ERRORS = 10
 REQUESTS_DELAY = 3
 
 logger = logging.getLogger('Race')
-
-
-class RaceStatus:
-
-    """
-        Represents all available options for the status of the race
-    """
-
-    UNKNOWN = -1
-    WAITING = 0
-    RUNNING = 1
-    FINISHED = 2
-
-
-class RaceState:
-
-    """
-        Represents a state of the race contained in a race file
-    """
-
-    def __init__(self, lastState=None):
-        self.lastStatus = RaceStatus.UNKNOWN
-        self.teams = []
-
-        self.status = RaceStatus.UNKNOWN if lastState is None else lastState.status
-
-    def addTeam(self, team):
-        """
-            Adds a team to the current race state
-
-            :param team: team to add
-            :ptype team: dict
-        """
-        self.teams.append(team)
-
-    def statusChanged(self):
-        """
-            Checks if the status of the race state have changed after read the race file
-
-            :return: True if the race status have changed, False if not
-            :rtype: bool
-        """
-        return not self.status == self.lastStatus
-
-    def setStatus(self, status):
-        """
-            Changes the current status to another one
-
-            If the new status is different than the last one, then the method statusChanged will return True.
-        """
-        self.lastStatus = self.status
-        self.status = status
 
 
 def broadcastRace(config):
@@ -79,38 +29,38 @@ def broadcastRace(config):
     loopTime = 0
     startTime = time.time()
 
-    race = None
+    state = None
     raceFile = config['raceFile']
 
     baseUrl = config['api']['baseUrl']
     updateRaceStatus = config['api']['actions']['updateRaceStatus']
     updateTeams = config['api']['actions']['updateTeams']
 
-    while race is None or not race.status == RaceStatus.FINISHED:
+    while state is None or not state.status == RaceStatus.FINISHED:
         time.sleep(REQUESTS_DELAY)
         loopTime = int(time.time() - startTime)
         startTime = time.time()
-        race = readRaceStateFromFile(raceFile, loopTime, race)
+        state = readRaceStateFromFile(raceFile, loopTime, state)
 
-        if race is None:
+        if state is None:
             print('The given race file does not contain any teams')
-            break
-
-        if race.statusChanged():
-            print('New race status :', race.status)
+            break         
         
-        if race.statusChanged():
+        if state.statusChanged():
+            print('New race status :', state.status)
             r = sendPostRequest(baseUrl, updateRaceStatus, {
                 'race': config['raceName'],
-                'status': race.status
+                'status': state.status
             })
+
             if not r:
                 networkErrors += 1
             
         
         r = sendPostRequest(baseUrl, updateTeams, {
-            'teams': race.teams
+            'teams': state.teams
         })
+
         if r is False:
             networkErrors += 1
         
@@ -120,28 +70,6 @@ def broadcastRace(config):
             break
     
     logger.info('End of the broadcast')
-
-
-def computeRaceStatus(segmentsRead, totalSegments):
-    """
-        Computes the race status according to the number of segments read
-
-        The number of segments in the race file is equal to the number of segments per line
-        times the number of teams
-
-        :param segmentsRead: number of segments read
-        :ptype segmentsRead: int
-        :param totalSegments: number of segments in the race file
-        :ptype totalSegments: int
-        :return: the status of the race
-        :rtype: RaceStatus
-    """
-    if segmentsRead == 0:
-        return RaceStatus.WAITING
-    elif segmentsRead == totalSegments:
-        return RaceStatus.FINISHED
-    else:
-        return RaceStatus.RUNNING
 
 
 def computeSegmentsNumber(record):
@@ -154,6 +82,8 @@ def computeSegmentsNumber(record):
 
         :param record: line of a race file
         :ptype record: dict
+        :return: the number of segments in the given record
+        :rtype: int
     """
     i = 0
     while True:
@@ -167,29 +97,27 @@ def computeSegmentsNumber(record):
     return i
 
 
-def readSegmentDistance(record, segmentId):
+def getInt(container, key):
     """
-        Extracts the distance from start of the given segment
+        Extracts an int from a dict with the given key
 
-        If the given segment id does not exist or the value is not
-        a valid integer, then False is returned.
+        If the key does not exist or the associated value
+        is not an int then None is returned.
 
-        :param record: line that contains the distance of the segment
-        :ptype record: dict
-        :param segmentId: id of the wanted segment
-        :ptype segmentId: int
-        :return: the distance from start of the given segment or False if an error occurred
-        :rtype: int | bool
+        :param container: a dict that may contains the key
+        :ptype container: dict
+        :param key: the key
+        :ptype key: any
+        :return: an integer value associated to the given key or None
+        :rtype: int
     """
-    fieldName = 'D%d' % (segmentId,)
-
-    if fieldName in record:
+    if key in container:
         try:
-            return int(record[fieldName])
+            return int(container[key])
         except ValueError:
-            return False
-
-    return False
+            return None
+    
+    return None
 
 
 def readRaceState(reader, loopTime, lastState):
@@ -201,8 +129,8 @@ def readRaceState(reader, loopTime, lastState):
         :param reader: lines of the race file
         :ptype reader: DictReader
         :param loopTime: elapsed time in seconds since the last call to this function
-        :ptype loopTime: int
-        :param lastState: last state of the race, may be None
+        :ptype looTime: int
+        :param lastState: last state of the race, could be None
         :ptype lastState: RaceState
         :return: the current state of the race
         :rtype: RaceState
@@ -216,15 +144,10 @@ def readRaceState(reader, loopTime, lastState):
     for record in reader:
         if recordsNumber == 0:
             totalSegmentsNumber = computeSegmentsNumber(record)
-        
-        if not 'BibNumber' in record:
-            print('Invalid team record, missing key "BibNumber"')
-            continue
 
-        try:
-            bibNumber = int(record['BibNumber'])
-        except ValueError as e:
-            print('Bib number is not a valid integer :', e)
+        bibNumber = getInt(record, 'BibNumber')
+        if bibNumber is None:
+            print('BibNumber error')
             continue
         
         splitTimes = readSplitTimes(record)
@@ -237,9 +160,9 @@ def readRaceState(reader, loopTime, lastState):
             
         if len(splitTimes) > 0:
             currentSegmentId = len(splitTimes) - 1
-            segmentDistanceFromStart = readSegmentDistance(record, currentSegmentId)
+            segmentDistanceFromStart = getInt(record, currentSegmentId)
 
-            if segmentDistanceFromStart is False:
+            if segmentDistanceFromStart is None:
                 print('Error while reading field D%d for team %s' % (currentSegmentId, bibNumber))
                 continue
 
@@ -278,6 +201,8 @@ def readRaceStateFromFile(filePath, loopTime, lastState):
         :ptype filePath: str
         :param loopTime: elapsed time in seconds since the last call to this function
         :ptype loopTime: int
+        :param lastState: last state of the race, could be None
+        :ptype lastState: RaceState
         :return: a list of teams or False if an io erro occured
         :rtype: RaceState
     """
@@ -288,7 +213,6 @@ def readRaceStateFromFile(filePath, loopTime, lastState):
             reader = csv.DictReader(f, delimiter='\t')
 
             raceState = readRaceState(reader, loopTime, lastState)
-
     except IOError as e:
         print('IOError :', e)
     
@@ -306,27 +230,27 @@ def readSplitTimes(record):
         :param record: line to extract split times
         :ptype record: dict
         :return: a list of integers that correspond to an elapsed time in seconds
-        :rtype: int
+        :rtype: list
     """
     splitTimes = []
 
-    try:
-        i = 0
-        # Retreiving all segments Si while Si is a valid key in record
-        while True:
-            segmentName = 'S%d' % (i, )
-            
-            value = int(record[segmentName])
-            if value >= 0:
-                splitTimes.append(value)
-                i += 1
-            else:
-                break
-    except KeyError:
-        pass
-    except ValueError:
-        print('Invalid conversion to integer for a split time')
-        return False
+    i = 0
+    # Retreiving all segments Si while Si is a valid key in record
+    while True:
+        segmentName = 'S%d' % (i, )
+        
+        value = getInt(record, segmentName)
+
+        if value is None:
+            print('split time error')
+            return False
+
+        if value >= 0:
+            splitTimes.append(value)
+            i += 1
+        else:
+            # No more split times for this team
+            break
     
     return splitTimes
 
