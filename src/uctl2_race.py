@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import json
 import logging
@@ -18,7 +19,7 @@ REQUESTS_DELAY = 3
 logger = logging.getLogger('Race')
 
 
-def broadcastRace(config):
+async def broadcastRace(config):
     """
         Broadcasts the state of the race from a race file
 
@@ -37,7 +38,7 @@ def broadcastRace(config):
     updateTeams = config['api']['actions']['updateTeams']
 
     while state is None or not state.status == RaceStatus.FINISHED:
-        time.sleep(REQUESTS_DELAY)
+        await asyncio.sleep(REQUESTS_DELAY)
         loopTime = int(time.time() - startTime)
         startTime = time.time()
         state = readRaceStateFromFile(raceFile, loopTime, state)

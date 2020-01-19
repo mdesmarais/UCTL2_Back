@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os.path
@@ -8,6 +9,7 @@ from threading import Thread
 from config import Config
 from uctl2_race import broadcastRace
 from uctl2_setup import readRace, sendRace
+import notifier
 
 
 def createDefaultConfig(name):
@@ -80,7 +82,7 @@ def executeSimulation(simPath, configPath):
     print('-- End of the simulation')
 
 
-if __name__ == '__main__':
+async def main():
     if len(sys.argv) == 1:
         print('Usage: uctl2.py path_to_config_file')
         configName = 'config.json'
@@ -116,10 +118,20 @@ if __name__ == '__main__':
         sys.exit(-1)
 
     # Sending initial informations to the server (route, teams, segments, race infos)
-    sendRace(race, config['api']['baseUrl'], config['api']['actions']['setupRace'])
+    if not sendRace(race, config['api']['baseUrl'], config['api']['actions']['setupRace']):
+        print('Unable to send initial race informations')
+        sys.exit(-1)
+    
+    await notifier.broadcastEvent(0, None)
     
     # Starting simulation
     Thread(target=executeSimulation, args=[config['simPath'], configFile]).start()
 
     # Starting the race file broadcasting
-    broadcastRace(config)
+    await broadcastRace(config)
+
+
+if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(asyncio.gather(main(), notifier.producerHandler()))
+    loop.close()

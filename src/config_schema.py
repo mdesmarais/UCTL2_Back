@@ -19,14 +19,6 @@ CONFIG_SCHEMA = {
         'simPath': {
             'type': 'string'
         },
-        'tickStep': {
-            'type': 'integer',
-            'minimum': 1
-        },
-        'fileUpdateRate': {
-            'type': 'integer',
-            'minimum': 1
-        },
         'segments': {
             'type': 'array',
             'minItems': 2,
