@@ -122,6 +122,7 @@ async def main():
         print('Unable to send initial race informations')
         sys.exit(-1)
     
+    # @TODO should we send the race or let the client request the race to the db ?
     await notifier.broadcastEvent(0, None)
     
     # Starting simulation

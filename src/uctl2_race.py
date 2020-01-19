@@ -50,14 +50,17 @@ async def broadcastRace(config):
         
         if state.statusChanged():
             print('New race status :', state.status)
-            r = sendPostRequest(baseUrl, updateRaceStatus, {
+            event = {
                 'race': config['raceName'],
-                'status': state.status
-            })
-            await notifier.broadcastEvent(1, state.status)
+                'status': state.status,
+                'startTime': config['startTime']
+            }
+            r = sendPostRequest(baseUrl, updateRaceStatus, event)
 
             if not r:
                 networkErrors += 1
+
+            await notifier.broadcastEvent(1, event)
             
         
         r = sendPostRequest(baseUrl, updateTeams, {
