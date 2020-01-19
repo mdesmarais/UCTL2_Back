@@ -11,6 +11,7 @@ import urllib
 import requests
 
 from race_state import RaceState, RaceStatus, computeRaceStatus
+import notifier
 
 DEBUG_DATA_SENT = True
 MAX_NETWORK_ERRORS = 10
@@ -53,6 +54,7 @@ async def broadcastRace(config):
                 'race': config['raceName'],
                 'status': state.status
             })
+            await notifier.broadcastEvent(1, state.status)
 
             if not r:
                 networkErrors += 1
@@ -161,7 +163,7 @@ def readRaceState(reader, loopTime, lastState):
             
         if len(splitTimes) > 0:
             currentSegmentId = len(splitTimes) - 1
-            segmentDistanceFromStart = getInt(record, currentSegmentId)
+            segmentDistanceFromStart = getInt(record, 'D%d' % (currentSegmentId, ))
 
             if segmentDistanceFromStart is None:
                 print('Error while reading field D%d for team %s' % (currentSegmentId, bibNumber))
@@ -243,8 +245,7 @@ def readSplitTimes(record):
         value = getInt(record, segmentName)
 
         if value is None:
-            print('split time error')
-            return False
+            break
 
         if value >= 0:
             splitTimes.append(value)
