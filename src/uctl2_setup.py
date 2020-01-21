@@ -1,4 +1,5 @@
 import json
+import logging
 import urllib
 
 import gpxpy
@@ -76,11 +77,12 @@ def extractRacePoints(points):
         :return: a list of points (latitude, longitude, elevation)
         :rtype: list
     """
+    logger = logging.getLogger(__name__)
     racePoints = []
 
     for point in points:
         if len(point) < 2:
-            print('A point must have at least 2 elements : latitude, longitude, ?elevation')
+            logger.error('A point must have at least 2 elements : latitude, longitude, ?elevation')
             continue
 
         lat = point[0]
@@ -97,12 +99,14 @@ def extractRacePoints(points):
 
 
 def extractRacePointsFromJsonFile(path):
+    logger = logging.getLogger(__name__)
+
     with open(path, 'r') as f:
         pointsFile = json.load(f)
         if 'points' in pointsFile:
             return extractRacePoints(pointsFile['points'])
         else:
-            print('Missing points key')
+            logger.error('Missing points key')
             return False
 
 
@@ -145,6 +149,8 @@ def sendRace(race, baseUrl, action):
         :return: true if the race was correctly sent to the server, false if not
         :rtype: bool
     """
+    logger = logging.getLogger(__name__)
+
     try:
         url = urllib.parse.urljoin(baseUrl, action)
         r = requests.post(url, data={"race": json.dumps(race)})
@@ -152,11 +158,11 @@ def sendRace(race, baseUrl, action):
         #print(json.dumps(race))
 
         if not r.status_code == requests.codes.ok:
-            print('Requests response error:', r.status_code)
-            print(r.content)
+            logger.error('Requests response error : %d', r.status_code)
+            logger.error(r.content)
             return False
     except requests.exceptions.RequestException as e:
-        print('Something bad happened when trying to send a request\n->', e)
+        logger.error('Something bad happened when trying to send a request\n->%s', e)
         return False
 
     return True

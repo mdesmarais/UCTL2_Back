@@ -9,6 +9,7 @@ from threading import Thread
 from config import Config
 from uctl2_race import broadcastRace
 from uctl2_setup import readRace, sendRace
+import events
 import notifier
 
 
@@ -35,28 +36,6 @@ def createDefaultConfig(name):
     return True
 
 
-def createLoggers():
-    """
-        Creates loggers that are used by the simulation and the setup / race script
-    """
-    raceLogger = logging.getLogger('Race')
-    raceLogger.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
-   
-    formatter = logging.Formatter('[%(name)s] %(levelname)s - %(message)s')
-    ch.setFormatter(formatter)
-    raceLogger.addHandler(ch)
-
-    # Creates a logger for simulation output (stdout and stderr)
-    simLogger = logging.getLogger('Sim')
-    simLogger.setLevel(logging.DEBUG)
-    ch2 = logging.StreamHandler()
-   
-    formatter2 = logging.Formatter('[%(name)s] %(message)s')
-    ch2.setFormatter(formatter2)
-    simLogger.addHandler(ch2)
-
-
 def executeSimulation(simPath, configPath):
     """
         Executes the jar of the simulation
@@ -70,16 +49,16 @@ def executeSimulation(simPath, configPath):
         :param configPath: absolute path to the configuration file
         :ptype configPath: str
     """
-    print('-- Starting simulation --')
-    process = subprocess.Popen(['java', '-jar', simPath, configPath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     logger = logging.getLogger('Sim')
+    logger.info('-- Starting simulation --')
+    process = subprocess.Popen(['java', '-jar', simPath, configPath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     with process.stdout:
         for line in iter(process.stdout.readline, b''):
-            logger.error(line.strip().decode('utf-8'))
+            logger.info(line.strip().decode('utf-8'))
 
     process.wait()
-    print('-- End of the simulation')
+    logger.info('-- End of the simulation')
 
 
 async def main():
@@ -93,23 +72,27 @@ async def main():
     configFile = os.path.abspath(sys.argv[1])
     config = None
 
-    createLoggers()
+    ch = logging.StreamHandler()
+    formatter = logging.Formatter('[%(levelname)s] %(name)s - %(message)s')
+    ch.setFormatter(formatter)
+    logging.basicConfig(handlers=[ch], level=logging.DEBUG)
 
-    print('Loading configuration', configFile)
+    logger = logging.getLogger(__name__)
+
+    logger.info('Loading configuration %s', configFile)
     try:
         with open(configFile, 'r') as f:
             jsonConfig = json.load(f)
 
             config = Config.readFromJson(jsonConfig)
     except FileNotFoundError:
-        print('Unable to open config file', configFile)
+        logger.error('Unable to open config file %s', configFile)
         sys.exit(-1)
     except json.JSONDecodeError as e:
-        print('The given config file does not contain valid JSON\n->', e)
+        logger.error('The given config file does not contain valid JSON\n-> %s', e)
         sys.exit(-1)
     
     if config is None:
-        print('Configuration error')
         sys.exit(-1)
     
     race = readRace(config)
@@ -119,11 +102,11 @@ async def main():
 
     # Sending initial informations to the server (route, teams, segments, race infos)
     if not sendRace(race, config['api']['baseUrl'], config['api']['actions']['setupRace']):
-        print('Unable to send initial race informations')
+        logger.error('Unable to send initial race informations')
         sys.exit(-1)
     
     # @TODO should we send the race or let the client request the race to the db ?
-    await notifier.broadcastEvent(0, None)
+    await notifier.broadcastEvent(events.RACE_SETUP, None)
     
     # Starting simulation
     Thread(target=executeSimulation, args=[config['simPath'], configFile]).start()

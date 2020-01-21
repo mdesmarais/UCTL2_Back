@@ -1,7 +1,10 @@
-EVENT_RACE_SETUP = 0
+# Events id definition
+# Each event must have a unique id
+# It must be an integer, greater or equal to 0
 
-EVENT_RACE_START = 1
-EVENT_RACE_END = 2
+RACE_SETUP = 0
 
-EVENT_TEAM_CHECKPOINT = 3
-EVENT_TEAM_END = 4
+RACE_STATUS = 1
+
+TEAM_CHECKPOINT = 3
+TEAM_END = 4

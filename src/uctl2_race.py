@@ -1,5 +1,6 @@
 import asyncio
 import csv
+import events
 import json
 import logging
 import math
@@ -17,8 +18,6 @@ DEBUG_DATA_SENT = True
 MAX_NETWORK_ERRORS = 10
 REQUESTS_DELAY = 3
 
-logger = logging.getLogger('Race')
-
 
 async def broadcastRace(config):
     """
@@ -27,6 +26,8 @@ async def broadcastRace(config):
         :param config: a valid configuration
         :ptype config: Config | dict
     """
+    logger = logging.getLogger(__name__)
+
     networkErrors = 0
     loopTime = 0
     startTime = time.time()
@@ -45,11 +46,11 @@ async def broadcastRace(config):
         state = readRaceStateFromFile(raceFile, loopTime, state)
 
         if state is None:
-            print('The given race file does not contain any teams')
+            logger.warning('The given race file does not contain any teams')
             break         
         
         if state.statusChanged():
-            print('New race status :', state.status)
+            logger.debug('New race status : %s', state.status)
             event = {
                 'race': config['raceName'],
                 'status': state.status,
@@ -60,7 +61,7 @@ async def broadcastRace(config):
             if not r:
                 networkErrors += 1
 
-            await notifier.broadcastEvent(1, event)
+            await notifier.broadcastEvent(events.RACE_STATUS, event)
             
         
         r = sendPostRequest(baseUrl, updateTeams, {
@@ -72,7 +73,7 @@ async def broadcastRace(config):
         
         # Prevents an infinite loop if the server is down or does not responding correctly
         if networkErrors >= MAX_NETWORK_ERRORS:
-            print('Script terminated because too many network errors occured')
+            logger.error('Script terminated because too many network errors occured')
             break
     
     logger.info('End of the broadcast')
@@ -141,6 +142,8 @@ def readRaceState(reader, loopTime, lastState):
         :return: the current state of the race
         :rtype: RaceState
     """
+    logger = logging.getLogger(__name__)
+
     raceState = RaceState(lastState)
 
     totalSegmentsNumber = 0
@@ -153,7 +156,7 @@ def readRaceState(reader, loopTime, lastState):
 
         bibNumber = getInt(record, 'BibNumber')
         if bibNumber is None:
-            print('BibNumber error')
+            logger.error('BibNumber error')
             continue
         
         splitTimes = readSplitTimes(record)
@@ -169,7 +172,7 @@ def readRaceState(reader, loopTime, lastState):
             segmentDistanceFromStart = getInt(record, 'D%d' % (currentSegmentId, ))
 
             if segmentDistanceFromStart is None:
-                print('Error while reading field D%d for team %s' % (currentSegmentId, bibNumber))
+                logger.error('Error while reading field D%d for team %s', currentSegmentId, bibNumber)
                 continue
 
             # Computing some estimations : average pace, covered distance since the last loop
@@ -212,6 +215,8 @@ def readRaceStateFromFile(filePath, loopTime, lastState):
         :return: a list of teams or False if an io erro occured
         :rtype: RaceState
     """
+    logger = logging.getLogger(__name__)
+
     raceState = None
 
     try:
@@ -220,7 +225,7 @@ def readRaceStateFromFile(filePath, loopTime, lastState):
 
             raceState = readRaceState(reader, loopTime, lastState)
     except IOError as e:
-        print('IOError :', e)
+        logger.error('IOError : %s', e)
     
     return raceState
 
@@ -273,6 +278,8 @@ def sendPostRequest(baseUrl, action, data):
         :return: True if the request was sent correctly, False if not
         :rtype: bool
     """
+    logger = logging.getLogger(__name__)
+
     dataJson = {}
     for key, value in data.items():
         dataJson[key] = json.dumps(value)
@@ -282,13 +289,13 @@ def sendPostRequest(baseUrl, action, data):
         r = requests.post(url, data=dataJson)
 
         if DEBUG_DATA_SENT:
-            logger.debug('Request sent to %s with data %s' % (r.url, data))
+            logger.debug('Request sent to %s with data %s', r.url, data)
         
         if not r.status_code == requests.codes.ok:
-            print('Requests response error', r.status_code)
+            logger.error('Requests response error %d', r.status_code)
             return False
     except requests.exceptions.RequestException as e:
-        print('Something bad happened when trying to send a request :\n', e)
+        logger.error('Something bad happened when trying to send a request :\n%s', e)
         return False
     
     return True
