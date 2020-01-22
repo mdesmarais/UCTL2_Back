@@ -114,8 +114,9 @@ async def main():
     # Starting the race file broadcasting
     await broadcastRace(config)
 
+    await notifier.stopNotifier()
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(asyncio.gather(notifier.startNotifier(5678), main()))
+    loop.run_until_complete(asyncio.gather(notifier.startNotifier(5678), notifier.broadcaster(), main()))
     loop.close()
