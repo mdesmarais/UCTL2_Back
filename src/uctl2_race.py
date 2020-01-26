@@ -1,3 +1,4 @@
+import aiohttp
 import asyncio
 import csv
 import events
@@ -19,7 +20,7 @@ MAX_NETWORK_ERRORS = 10
 REQUESTS_DELAY = 3
 
 
-async def broadcastRace(config):
+async def broadcastRace(config, session):
     """
         Broadcasts the state of the race from a race file
 
@@ -28,7 +29,6 @@ async def broadcastRace(config):
     """
     logger = logging.getLogger(__name__)
 
-    networkErrors = 0
     loopTime = 0
     startTime = time.time()
 
@@ -45,6 +45,10 @@ async def broadcastRace(config):
         startTime = time.time()
         state = readRaceStateFromFile(raceFile, loopTime, state)
 
+        # Stores async tasks that have to be executed
+        # before the end of the loop
+        tasks = []
+
         if state is None:
             logger.warning('The given race file does not contain any teams')
             break         
@@ -56,26 +60,18 @@ async def broadcastRace(config):
                 'status': state.status,
                 'startTime': config['startTime']
             }
-            r = sendPostRequest(baseUrl, updateRaceStatus, event)
 
-            if not r:
-                networkErrors += 1
-
-            await notifier.broadcastEvent(events.RACE_STATUS, event)
+            tasks.append(asyncio.ensure_future(sendPostRequest(session, baseUrl, updateRaceStatus, event)))
+            tasks.append(asyncio.ensure_future(notifier.broadcastEvent(events.RACE_STATUS, event)))
             
-        
-        r = sendPostRequest(baseUrl, updateTeams, {
+        # @TODO only send teams that have been updated
+        tasks.append(asyncio.ensure_future(sendPostRequest(session, baseUrl, updateTeams, {
             'teams': state.teams
-        })
+        })))
 
-        if r is False:
-            networkErrors += 1
-        
-        # Prevents an infinite loop if the server is down or does not responding correctly
-        if networkErrors >= MAX_NETWORK_ERRORS:
-            logger.error('Script terminated because too many network errors occured')
-            break
-    
+        # Waits for all async tasks    
+        await asyncio.wait(tasks)
+
     logger.info('End of the broadcast')
 
 
@@ -265,7 +261,7 @@ def readSplitTimes(record):
     return splitTimes
 
 
-def sendPostRequest(baseUrl, action, data):
+async def sendPostRequest(session, baseUrl, action, data):
     """
         Sends a post request to the api server
 
@@ -286,16 +282,16 @@ def sendPostRequest(baseUrl, action, data):
 
     try:
         url = urllib.parse.urljoin(baseUrl, action)
-        r = requests.post(url, data=dataJson)
 
-        if DEBUG_DATA_SENT:
-            logger.debug('Request sent to %s with data %s', r.url, data)
-        
-        if not r.status_code == requests.codes.ok:
-            logger.error('Requests response error %d', r.status_code)
-            return False
+        async with session.post(url, data=dataJson) as r:
+            if DEBUG_DATA_SENT:
+                logger.debug('Request sent to %s with data %s', r.url, data)
+            
+            if not r.status == 200:
+                logger.error('Requests response error %d', r.status)
+                return False
+
+            return True
     except requests.exceptions.RequestException as e:
         logger.error('Something bad happened when trying to send a request :\n%s', e)
         return False
-    
-    return True
