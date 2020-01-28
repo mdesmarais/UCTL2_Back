@@ -22,7 +22,7 @@ Le programme attend en paramètre un chemin vers un fichier de configuration. Si
 La configuration doit être stockée dans un fichier au format json.
 
 | Clé | Type | Description |
-|-----|------|------------|-------------|
+|-----|------|------------|
 | raceName | String | Nom de la course |
 | startTime | timestamp | Date et heure du début de la course |
 | raceFile | String | Chemin vers un fichier de course |
