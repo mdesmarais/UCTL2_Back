@@ -13,6 +13,7 @@ import urllib
 import requests
 
 from race_state import RaceState, RaceStatus, computeRaceStatus
+from team_state import TeamState
 import notifier
 
 DEBUG_DATA_SENT = True
@@ -63,14 +64,18 @@ async def broadcastRace(config, session):
 
             tasks.append(asyncio.ensure_future(sendPostRequest(session, baseUrl, updateRaceStatus, event)))
             tasks.append(asyncio.ensure_future(notifier.broadcastEvent(events.RACE_STATUS, event)))
-            
+
+        for team in state.teams:
+            team.debug()
+
         # @TODO only send teams that have been updated
-        tasks.append(asyncio.ensure_future(sendPostRequest(session, baseUrl, updateTeams, {
+        """tasks.append(asyncio.ensure_future(sendPostRequest(session, baseUrl, updateTeams, {
             'teams': state.teams
-        })))
+        })))"""
 
         # Waits for all async tasks    
-        await asyncio.wait(tasks)
+        if len(tasks) > 0:
+            await asyncio.wait(tasks)
 
     logger.info('End of the broadcast')
 
@@ -178,12 +183,21 @@ def readRaceState(reader, loopTime, lastState):
                     averageSpeed = segmentDistanceFromStart / splitTimes[currentSegmentId]
                 stepDistance = averageSpeed * loopTime
 
-        raceState.addTeam({
-            'bibNumber': bibNumber,
-            'pace': pace,
-            'stepDistance': stepDistance,
-            'segmentDistanceFromStart': segmentDistanceFromStart
-        })
+        try:
+            if lastState is not None:
+                lastTeamState = lastState.teams[list(map(lambda t: t.bibNumber, lastState.teams)).index(bibNumber)]
+            else:
+                lastTeamState = None
+        except ValueError:
+            lastTeamState = None
+
+        teamState = TeamState(bibNumber, lastTeamState)
+        teamState.setPace(pace)
+        teamState.setStepDistance(stepDistance)
+        teamState.setSegmentDistanceFromStart(segmentDistanceFromStart)
+        teamState.setSegments(currentSegmentId)
+
+        raceState.addTeam(teamState)
 
         recordsNumber += 1
 
