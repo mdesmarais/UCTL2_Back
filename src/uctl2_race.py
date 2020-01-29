@@ -65,13 +65,25 @@ async def broadcastRace(config, session):
             tasks.append(asyncio.ensure_future(sendPostRequest(session, baseUrl, updateRaceStatus, event)))
             tasks.append(asyncio.ensure_future(notifier.broadcastEvent(events.RACE_STATUS, event)))
 
-        for team in state.teams:
-            team.debug()
-
         # @TODO only send teams that have been updated
         """tasks.append(asyncio.ensure_future(sendPostRequest(session, baseUrl, updateTeams, {
             'teams': state.teams
         })))"""
+
+        sortedTeams = sorted(state.teams, key=lambda t: t.segmentDistanceFromStart + t.stepDistance, reverse=True)
+
+        for rank, team in enumerate(sortedTeams):
+            team.setRank(rank)
+            team.debug()
+
+        for team1 in state.teams:
+            overtakenTeams = []
+            oldRank1 = team1.oldRank()
+            for team2 in state.teams:
+                oldRank2 = team2.oldRank()
+                if not team1.bibNumber == team2.bibNumber and oldRank1 > oldRank2 and team1.rank < team2.rank:
+                    overtakenTeams.append(team2)
+
 
         # Waits for all async tasks    
         if len(tasks) > 0:
@@ -191,7 +203,7 @@ def readRaceState(reader, loopTime, lastState):
         except ValueError:
             lastTeamState = None
 
-        teamState = TeamState(bibNumber, lastTeamState)
+        teamState = TeamState(bibNumber, record['Team'], lastTeamState)
         teamState.setPace(pace)
         teamState.setStepDistance(stepDistance)
         teamState.setSegmentDistanceFromStart(segmentDistanceFromStart)

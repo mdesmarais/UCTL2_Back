@@ -11,21 +11,29 @@ def stateProperty(attr, status):
 
 class TeamState:
 
-    def __init__(self, bibNumber, lastState=None):
+    def __init__(self, bibNumber, name, lastState=None):
         self.bibNumber = bibNumber
+        self.name = name
         self.lastState = lastState
 
         self.pace = -1
         self.segments = 0
         self.segmentDistanceFromStart = 0
 
+        self.rank = 0
+
         self.paceChanged = False
         self.segmentsChanged = False
         self.segmentDistanceFromStartChanged = False
+        self.rankChanged = False
 
     @stateProperty('pace', 'paceChanged')
     def setPace(self, pace):
         self.pace = pace
+
+    @stateProperty('rank', 'rankChanged')
+    def setRank(self, rank):
+        self.rank = rank
 
     @stateProperty('segments', 'segmentsChanged')
     def setSegments(self, segments):
@@ -40,8 +48,14 @@ class TeamState:
         self.segmentDistanceFromStart = segmentDistanceFromStart
     
     def stateChanged(self):
-        return self.paceChanged or self.segmentsChanged or self.segmentDistanceFromStart
+        return self.paceChanged or self.segmentsChanged or self.segmentDistanceFromStart or self.rankChanged()
     
     def debug(self):
-        print('paceChanged=%s segmentsChanged=%s segmentDistanceFromStart=%s' % (self.paceChanged, self.segmentsChanged, self.segmentDistanceFromStartChanged))
+        print('paceChanged=%s segmentsChanged=%s segmentDistanceFromStart=%s rankChanged=%s' % (self.paceChanged, self.segmentsChanged, self.segmentDistanceFromStartChanged, self.rankChanged))
+
+    def oldRank(self):
+        if self.lastState is None:
+            return self.rank
+        else:
+            return self.lastState.rank
 
