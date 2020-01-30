@@ -4,6 +4,8 @@ import logging
 import websockets
 
 events = asyncio.Queue(10)
+delayedEvents = []
+
 clients = []
 stop = asyncio.get_event_loop().create_future()
 
@@ -16,7 +18,23 @@ async def broadcastEvent(id, payload):
         :param payload: optional data for this event, could be None
         :type payload: dict
     """
-    await events.put({'id': id, 'payload': payload})
+    await events.put([{
+        'id': id,
+        'payload': payload
+    }])
+
+def broadcastEventLater(id, payload):
+    delayedEvents.append({
+        'id': id,
+        'payload': payload
+    })
+
+async def broadcastEvents():
+    global delayedEvents
+
+    if len(delayedEvents) > 0:
+        await events.put(delayedEvents.copy())
+        delayedEvents = []
 
 
 async def broadcaster():

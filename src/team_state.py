@@ -11,51 +11,46 @@ def stateProperty(attr, status):
 
 class TeamState:
 
-    def __init__(self, bibNumber, name, lastState=None):
+    def __init__(self, bibNumber, lastState=None):
         self.bibNumber = bibNumber
-        self.name = name
         self.lastState = lastState
 
-        self.pace = -1
-        self.segments = 0
+        self._currentSegment = -1
+        self._rank = 0
+
+        self.pace = 0
+        self.stepDistance = 0
         self.segmentDistanceFromStart = 0
 
-        self.rank = 0
-
-        self.paceChanged = False
-        self.segmentsChanged = False
-        self.segmentDistanceFromStartChanged = False
+        self.currentSegmentChanged = False
         self.rankChanged = False
 
-    @stateProperty('pace', 'paceChanged')
-    def setPace(self, pace):
-        self.pace = pace
-
-    @stateProperty('rank', 'rankChanged')
-    def setRank(self, rank):
-        self.rank = rank
-
-    @stateProperty('segments', 'segmentsChanged')
-    def setSegments(self, segments):
-        self.segments = segments
+    @property
+    def coveredDistance(self):
+        return self.stepDistance + self.segmentDistanceFromStart
     
-    @stateProperty('stepDistance', 'stepDistanceChanged')
-    def setStepDistance(self, stepDistance):
-        self.stepDistance = stepDistance
-
-    @stateProperty('segmentDistanceFromStart', 'segmentDistanceFromStartChanged')
-    def setSegmentDistanceFromStart(self, segmentDistanceFromStart):
-        self.segmentDistanceFromStart = segmentDistanceFromStart
+    @property
+    def currentSegment(self):
+        return self._currentSegment
     
-    def stateChanged(self):
-        return self.paceChanged or self.segmentsChanged or self.segmentDistanceFromStart or self.rankChanged()
-    
-    def debug(self):
-        print('paceChanged=%s segmentsChanged=%s segmentDistanceFromStart=%s rankChanged=%s' % (self.paceChanged, self.segmentsChanged, self.segmentDistanceFromStartChanged, self.rankChanged))
+    @currentSegment.setter
+    @stateProperty('currentSegment', 'currentSegmentChanged')
+    def currentSegment(self, currentSegment):
+        self._currentSegment = currentSegment
 
+    @property
     def oldRank(self):
         if self.lastState is None:
             return self.rank
         else:
             return self.lastState.rank
+
+    @property
+    def rank(self):
+        return self._rank
+
+    @rank.setter
+    @stateProperty('rank', 'rankChanged')
+    def rank(self, rank):
+        self._rank = rank
 

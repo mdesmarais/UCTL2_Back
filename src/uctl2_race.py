@@ -1,8 +1,7 @@
-import aiohttp
 import asyncio
 import csv
-import events
 import json
+import itertools
 import logging
 import math
 import os
@@ -10,11 +9,13 @@ import sys
 import time
 import urllib
 
+import aiohttp
 import requests
 
+import events
+import notifier
 from race_state import RaceState, RaceStatus, computeRaceStatus
 from team_state import TeamState
-import notifier
 
 DEBUG_DATA_SENT = True
 MAX_NETWORK_ERRORS = 10
@@ -70,26 +71,51 @@ async def broadcastRace(config, session):
             'teams': state.teams
         })))"""
 
-        sortedTeams = sorted(state.teams, key=lambda t: t.segmentDistanceFromStart + t.stepDistance, reverse=True)
+        # Sorts teams by their covered distance, in reverse order
+        # The first team in the list is the leader of the race
+        sortedTeams = sorted(state.teams, key=lambda t: t.coveredDistance, reverse=True)
 
         for rank, team in enumerate(sortedTeams):
-            team.setRank(rank)
-            team.debug()
+            # Updates rank
+            team.rank = rank
 
-        for team1 in state.teams:
-            overtakenTeams = []
-            oldRank1 = team1.oldRank()
-            for team2 in state.teams:
-                oldRank2 = team2.oldRank()
-                if not team1.bibNumber == team2.bibNumber and oldRank1 > oldRank2 and team1.rank < team2.rank:
-                    overtakenTeams.append(team2)
+        for team in itertools.islice(sortedTeams, 5):
+            if team.currentSegmentChanged:
+                if team.currentSegment == 0:
+                    id = events.TEAM_START
+                elif team.currentSegment == state.segmentsNumber:
+                    id = events.TEAM_END
+                else:
+                    id = events.TEAM_CHECKPOINT
 
+                notifier.broadcastEventLater(id, {
+                    'bibNumber': team.bibNumber,
+                    'currentSegment': team.currentSegment
+                })
+            
+            if team.rankChanged and team.rank < team.oldRank:
+                notifier.broadcastEventLater(events.TEAM_OVERTAKE, {
+                    'bibNumber': team.bibNumber,
+                    'teams': computeOvertakenTeams(team, state.teams)
+                })
+        
+        tasks.append(asyncio.ensure_future(notifier.broadcastEvents()))
 
         # Waits for all async tasks    
         if len(tasks) > 0:
             await asyncio.wait(tasks)
 
     logger.info('End of the broadcast')
+
+
+def computeOvertakenTeams(currentTeam, teams):
+        overtakenTeams = []
+
+        for team in teams:
+            if not currentTeam.bibNumber == team.bibNumber and currentTeam.oldRank > team.oldRank and currentTeam.rank < team.rank:
+                overtakenTeams.append(team.bibNumber)
+        
+        return overtakenTeams
 
 
 def computeSegmentsNumber(record):
@@ -166,6 +192,7 @@ def readRaceState(reader, loopTime, lastState):
     for record in reader:
         if recordsNumber == 0:
             totalSegmentsNumber = computeSegmentsNumber(record)
+        raceState.segmentsNumber = totalSegmentsNumber - 1
 
         bibNumber = getInt(record, 'BibNumber')
         if bibNumber is None:
@@ -203,11 +230,11 @@ def readRaceState(reader, loopTime, lastState):
         except ValueError:
             lastTeamState = None
 
-        teamState = TeamState(bibNumber, record['Team'], lastTeamState)
-        teamState.setPace(pace)
-        teamState.setStepDistance(stepDistance)
-        teamState.setSegmentDistanceFromStart(segmentDistanceFromStart)
-        teamState.setSegments(currentSegmentId)
+        teamState = TeamState(bibNumber, lastTeamState)
+        teamState.currentSegment = currentSegmentId
+        teamState.pace = pace
+        teamState.segmentDistanceFromStart = segmentDistanceFromStart
+        teamState.stepDistance = stepDistance
 
         raceState.addTeam(teamState)
 

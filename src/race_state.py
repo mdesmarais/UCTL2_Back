@@ -20,6 +20,7 @@ class RaceState:
     def __init__(self, lastState=None):
         self.lastStatus = RaceStatus.UNKNOWN
         self.teams = []
+        self.segmentsNumber = 0
 
         self.status = RaceStatus.UNKNOWN if lastState is None else lastState.status
 
