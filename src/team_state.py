@@ -52,5 +52,9 @@ class TeamState:
     @rank.setter
     @stateProperty('rank', 'rankChanged')
     def rank(self, rank):
+        b = self._rank == 0
         self._rank = rank
+
+        if b:
+            self.rankChanged = False
 

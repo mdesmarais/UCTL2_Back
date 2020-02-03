@@ -77,7 +77,7 @@ async def broadcastRace(config, session):
 
         for rank, team in enumerate(sortedTeams):
             # Updates rank
-            team.rank = rank
+            team.rank = rank + 1
 
         for team in itertools.islice(sortedTeams, 5):
             if team.currentSegmentChanged:
@@ -96,6 +96,8 @@ async def broadcastRace(config, session):
             if team.rankChanged and team.rank < team.oldRank:
                 notifier.broadcastEventLater(events.TEAM_OVERTAKE, {
                     'bibNumber': team.bibNumber,
+                    'oldRank': team.oldRank,
+                    'rank': team.rank,
                     'teams': computeOvertakenTeams(team, state.teams)
                 })
         
