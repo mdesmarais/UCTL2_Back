@@ -114,7 +114,7 @@ async def main():
 
     # Starting the race file broadcasting
     async with aiohttp.ClientSession() as session:
-        await broadcastRace(config, session)
+        await broadcastRace(race, config, session)
 
     await notifier.stopNotifier()
 

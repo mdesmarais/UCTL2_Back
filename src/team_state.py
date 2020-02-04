@@ -1,3 +1,5 @@
+import json
+
 
 def stateProperty(attr, status):
     def wrap(func):
@@ -17,17 +19,20 @@ class TeamState:
 
         self._currentSegment = -1
         self._rank = 0
+        self._segmentDistanceFromStart = 0
+        self._stepDistance = 0
 
         self.pace = 0
-        self.stepDistance = 0
-        self.segmentDistanceFromStart = 0
+        self.position = (0, 0)
 
         self.currentSegmentChanged = False
         self.rankChanged = False
+        self.stepDistanceChanged = False
+        self.segmentDistanceFromStartChanged = False
 
     @property
     def coveredDistance(self):
-        return self.stepDistance + self.segmentDistanceFromStart
+        return self._stepDistance + self._segmentDistanceFromStart
     
     @property
     def currentSegment(self):
@@ -37,6 +42,9 @@ class TeamState:
     @stateProperty('currentSegment', 'currentSegmentChanged')
     def currentSegment(self, currentSegment):
         self._currentSegment = currentSegment
+
+    def hasChanged(self):
+        return self.currentSegmentChanged or self.rankChanged
 
     @property
     def oldRank(self):
@@ -58,3 +66,32 @@ class TeamState:
         if b:
             self.rankChanged = False
 
+    @property
+    def segmentDistanceFromStart(self):
+        return self._segmentDistanceFromStart
+
+    @segmentDistanceFromStart.setter
+    @stateProperty('segmentDistanceFromStart', 'segmentDistanceFromStartChanged')
+    def segmentDistanceFromStart(self, sdfs):
+        self._segmentDistanceFromStart = sdfs
+
+    @property
+    def stepDistance(self):
+        return self._stepDistance
+
+    @stepDistance.setter
+    @stateProperty('stepDistance', 'stepDistanceChanged')
+    def stepDistance(self, stepDistance):
+        self._stepDistance = stepDistance
+
+    def toJSON(self):
+        return json.dumps({
+            'bibNumber': self.bibNumber,
+            'currentSegment': self.currentSegment,
+            'rank': self.rank,
+            'oldRank': self.oldRank,
+            'segmentDistanceFromStart': self.segmentDistanceFromStart,
+            'stepDistance': self.stepDistance,
+            'pace': self.pace,
+            'pos': self.position
+        })

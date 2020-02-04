@@ -22,7 +22,7 @@ MAX_NETWORK_ERRORS = 10
 REQUESTS_DELAY = 3
 
 
-async def broadcastRace(config, session):
+async def broadcastRace(race, config, session):
     """
         Broadcasts the state of the race from a race file
 
@@ -66,11 +66,6 @@ async def broadcastRace(config, session):
             tasks.append(asyncio.ensure_future(sendPostRequest(session, baseUrl, updateRaceStatus, event)))
             tasks.append(asyncio.ensure_future(notifier.broadcastEvent(events.RACE_STATUS, event)))
 
-        # @TODO only send teams that have been updated
-        """tasks.append(asyncio.ensure_future(sendPostRequest(session, baseUrl, updateTeams, {
-            'teams': state.teams
-        })))"""
-
         # Sorts teams by their covered distance, in reverse order
         # The first team in the list is the leader of the race
         sortedTeams = sorted(state.teams, key=lambda t: t.coveredDistance, reverse=True)
@@ -102,6 +97,24 @@ async def broadcastRace(config, session):
                 })
         
         tasks.append(asyncio.ensure_future(notifier.broadcastEvents()))
+
+        # Sends only teams that have been modified
+        updatedTeams = []
+
+        for team in state.teams:
+            if team.hasChanged():
+                distance = team.coveredDistance
+
+                i = 0
+                while i < len(race.racePoints) and distance > [3]:
+                    i += 1
+
+                team.position = (race.racePoints[i][0], race.racePoints[i][1])
+                updatedTeams.append(team.toJSON())
+
+        tasks.append(asyncio.ensure_future(sendPostRequest(session, baseUrl, updateTeams, {
+            'teams': updatedTeams
+        })))
 
         # Waits for all async tasks    
         if len(tasks) > 0:
