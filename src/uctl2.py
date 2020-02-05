@@ -106,8 +106,9 @@ async def main():
         logger.error('Unable to send initial race informations')
         sys.exit(-1)
     
+    await asyncio.sleep(4)
     # @TODO should we send the race or let the client request the race to the db ?
-    await notifier.broadcastEvent(events.RACE_SETUP, None)
+    await notifier.broadcastEvent(events.RACE_SETUP, race)
     
     # Starting simulation
     Thread(target=executeSimulation, args=[config['simPath'], configFile]).start()

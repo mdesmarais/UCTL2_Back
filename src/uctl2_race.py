@@ -106,10 +106,10 @@ async def broadcastRace(race, config, session):
                 distance = team.coveredDistance
 
                 i = 0
-                while i < len(race.racePoints) and distance > [3]:
+                while i < len(race['racePoints']) and race['racePoints'][i][3] < distance:
                     i += 1
 
-                team.position = (race.racePoints[i][0], race.racePoints[i][1])
+                team.position = (race['racePoints'][0], race['racePoints'][1])
                 updatedTeams.append(team.toJSON())
 
         tasks.append(asyncio.ensure_future(sendPostRequest(session, baseUrl, updateTeams, {

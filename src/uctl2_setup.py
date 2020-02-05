@@ -129,6 +129,14 @@ def readRace(config):
     if points is False:
         return False
 
+    teams = []
+    for team in config['teams']:
+        teams.append({
+            'name': team['name'],
+            'bibNumber': team['bibNumber'],
+            'pos': (0, 0)
+        })
+
     return {
         'teams': config['teams'],
         'racePoints': computeDistances(points),
