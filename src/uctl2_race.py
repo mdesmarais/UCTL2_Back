@@ -95,26 +95,21 @@ async def broadcastRace(race, config, session):
                     'rank': team.rank,
                     'teams': computeOvertakenTeams(team, state.teams)
                 })
+
+            if team.stepDistanceChanged or team.segmentDistanceFromStartChanged:
+                i = 0
+                while i < len(race['racePoints']) and race['racePoints'][i][3] < team.coveredDistance:
+                    i += 1
+
+                racePoint = race['racePoints'][i]
+                notifier.broadcastEventLater(events.TEAM_MOVE, {
+                    'bibNumber': team.bibNumber,
+                    'pos': (racePoints[0], racePoints[1])
+                })
         
         tasks.append(asyncio.ensure_future(notifier.broadcastEvents()))
 
-        # Sends only teams that have been modified
-        updatedTeams = []
-
-        for team in state.teams:
-            if team.hasChanged():
-                distance = team.coveredDistance
-
-                i = 0
-                while i < len(race['racePoints']) and race['racePoints'][i][3] < distance:
-                    i += 1
-
-                team.position = (race['racePoints'][0], race['racePoints'][1])
-                updatedTeams.append(team.toJSON())
-
-        tasks.append(asyncio.ensure_future(sendPostRequest(session, baseUrl, updateTeams, {
-            'teams': updatedTeams
-        })))
+        # @TODO send events to db
 
         # Waits for all async tasks    
         if len(tasks) > 0:

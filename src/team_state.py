@@ -23,7 +23,6 @@ class TeamState:
         self._stepDistance = 0
 
         self.pace = 0
-        self.position = (0, 0)
 
         self.currentSegmentChanged = False
         self.rankChanged = False
@@ -83,15 +82,3 @@ class TeamState:
     @stateProperty('stepDistance', 'stepDistanceChanged')
     def stepDistance(self, stepDistance):
         self._stepDistance = stepDistance
-
-    def toJSON(self):
-        return json.dumps({
-            'bibNumber': self.bibNumber,
-            'currentSegment': self.currentSegment,
-            'rank': self.rank,
-            'oldRank': self.oldRank,
-            'segmentDistanceFromStart': self.segmentDistanceFromStart,
-            'stepDistance': self.stepDistance,
-            'pace': self.pace,
-            'pos': self.position
-        })

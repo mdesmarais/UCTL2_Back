@@ -106,7 +106,7 @@ async def main():
         logger.error('Unable to send initial race informations')
         sys.exit(-1)
     
-    await asyncio.sleep(4)
+    await asyncio.sleep(10)
     # @TODO should we send the race or let the client request the race to the db ?
     await notifier.broadcastEvent(events.RACE_SETUP, race)
     

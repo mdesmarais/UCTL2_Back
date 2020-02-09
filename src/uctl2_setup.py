@@ -131,14 +131,16 @@ def readRace(config):
 
     teams = []
     for team in config['teams']:
+        # Initial informations to send for each team
         teams.append({
             'name': team['name'],
             'bibNumber': team['bibNumber'],
-            'pos': (0, 0)
+            # Initial position
+            'pos': (points[0][0], points[0][1])
         })
 
     return {
-        'teams': config['teams'],
+        'teams': teams,
         'racePoints': computeDistances(points),
         'infos': {
             'name': config['raceName'],
