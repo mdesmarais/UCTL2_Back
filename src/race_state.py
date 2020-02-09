@@ -50,25 +50,3 @@ class RaceState:
         """
         self.lastStatus = self.status
         self.status = status
-
-
-def computeRaceStatus(segmentsRead, totalSegments):
-    """
-        Computes the race status according to the number of segments read
-
-        The number of segments in the race file is equal to the number of segments per line
-        times the number of teams
-
-        :param segmentsRead: number of segments read
-        :ptype segmentsRead: int
-        :param totalSegments: number of segments in the race file
-        :ptype totalSegments: int
-        :return: the status of the race
-        :rtype: RaceStatus
-    """
-    if segmentsRead == 0:
-        return RaceStatus.WAITING
-    elif segmentsRead == totalSegments:
-        return RaceStatus.FINISHED
-    else:
-        return RaceStatus.RUNNING

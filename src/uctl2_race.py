@@ -14,12 +14,15 @@ import requests
 
 import events
 import notifier
-from race_state import RaceState, RaceStatus, computeRaceStatus
+from race_state import RaceState, RaceStatus
 from team_state import TeamState
 
 DEBUG_DATA_SENT = True
 MAX_NETWORK_ERRORS = 10
-REQUESTS_DELAY = 3
+REQUESTS_DELAY = 1
+
+BIB_NUMBER_FORMAT = 'Numéro'
+SEGMENT_NAME_FORMAT = 'Interm (S%d)'
 
 
 async def broadcastRace(race, config, session):
@@ -41,11 +44,15 @@ async def broadcastRace(race, config, session):
     updateRaceStatus = config['api']['actions']['updateRaceStatus']
     updateTeams = config['api']['actions']['updateTeams']
 
-    while state is None or not state.status == RaceStatus.FINISHED:
+    while True:
         await asyncio.sleep(REQUESTS_DELAY)
         loopTime = int(time.time() - startTime)
         startTime = time.time()
-        state = readRaceStateFromFile(raceFile, loopTime, state)
+        state = readRaceStateFromFile(raceFile, config, loopTime, state)
+
+        if state.status == RaceStatus.WAITING or state.status == RaceStatus.UNKNOWN:
+            print('waiting for race')
+            continue
 
         # Stores async tasks that have to be executed
         # before the end of the loop
@@ -54,6 +61,49 @@ async def broadcastRace(race, config, session):
         if state is None:
             logger.warning('The given race file does not contain any teams')
             break         
+
+        # Sorts teams by their covered distance, in reverse order
+        # The first team in the list is the leader of the race
+        sortedTeams = sorted(state.teams, key=lambda t: t.coveredDistance, reverse=True)
+
+        for rank, team in enumerate(sortedTeams):
+            # Updates rank
+            team.rank = rank + 1
+
+        for team in itertools.islice(sortedTeams, 5):
+            if team.currentSegmentChanged:
+                if team.currentSegment == state.segmentsNumber:
+                    id = events.TEAM_END
+                else:
+                    id = events.TEAM_CHECKPOINT
+
+                notifier.broadcastEventLater(id, {
+                    'bibNumber': team.bibNumber,
+                    'currentSegment': team.currentSegment + 1
+                })
+            
+            if team.rankChanged and team.rank < team.oldRank:
+                notifier.broadcastEventLater(events.TEAM_OVERTAKE, {
+                    'bibNumber': team.bibNumber,
+                    'oldRank': team.oldRank,
+                    'rank': team.rank,
+                    'teams': computeOvertakenTeams(team, state.teams)
+                })
+
+            """if team.stepDistanceChanged or team.segmentDistanceFromStartChanged:
+                i = 0
+                while i < len(race['racePoints']) and race['racePoints'][i][3] < team.coveredDistance:
+                    i += 1
+
+                racePoint = race['racePoints'][i]
+                notifier.broadcastEventLater(events.TEAM_MOVE, {
+                    'bibNumber': team.bibNumber,
+                    'pos': (racePoint[0], racePoint[1])
+                })"""
+        
+        tasks.append(asyncio.ensure_future(notifier.broadcastEvents()))
+
+        # @TODO send events to db
         
         if state.statusChanged():
             logger.debug('New race status : %s', state.status)
@@ -66,54 +116,12 @@ async def broadcastRace(race, config, session):
             tasks.append(asyncio.ensure_future(sendPostRequest(session, baseUrl, updateRaceStatus, event)))
             tasks.append(asyncio.ensure_future(notifier.broadcastEvent(events.RACE_STATUS, event)))
 
-        # Sorts teams by their covered distance, in reverse order
-        # The first team in the list is the leader of the race
-        sortedTeams = sorted(state.teams, key=lambda t: t.coveredDistance, reverse=True)
-
-        for rank, team in enumerate(sortedTeams):
-            # Updates rank
-            team.rank = rank + 1
-
-        for team in itertools.islice(sortedTeams, 5):
-            if team.currentSegmentChanged:
-                if team.currentSegment == 0:
-                    id = events.TEAM_START
-                elif team.currentSegment == state.segmentsNumber:
-                    id = events.TEAM_END
-                else:
-                    id = events.TEAM_CHECKPOINT
-
-                notifier.broadcastEventLater(id, {
-                    'bibNumber': team.bibNumber,
-                    'currentSegment': team.currentSegment
-                })
-            
-            if team.rankChanged and team.rank < team.oldRank:
-                notifier.broadcastEventLater(events.TEAM_OVERTAKE, {
-                    'bibNumber': team.bibNumber,
-                    'oldRank': team.oldRank,
-                    'rank': team.rank,
-                    'teams': computeOvertakenTeams(team, state.teams)
-                })
-
-            if team.stepDistanceChanged or team.segmentDistanceFromStartChanged:
-                i = 0
-                while i < len(race['racePoints']) and race['racePoints'][i][3] < team.coveredDistance:
-                    i += 1
-
-                racePoint = race['racePoints'][i]
-                notifier.broadcastEventLater(events.TEAM_MOVE, {
-                    'bibNumber': team.bibNumber,
-                    'pos': (racePoints[0], racePoints[1])
-                })
-        
-        tasks.append(asyncio.ensure_future(notifier.broadcastEvents()))
-
-        # @TODO send events to db
-
         # Waits for all async tasks    
         if len(tasks) > 0:
             await asyncio.wait(tasks)
+        
+        if state.status == RaceStatus.FINISHED:
+            break
 
     logger.info('End of the broadcast')
 
@@ -143,7 +151,7 @@ def computeSegmentsNumber(record):
     """
     i = 0
     while True:
-        field = 'S%d' % (i,)
+        field = SEGMENT_NAME_FORMAT % (i,)
 
         if field in record:
             i += 1
@@ -176,7 +184,7 @@ def getInt(container, key):
     return None
 
 
-def readRaceState(reader, loopTime, lastState):
+def readRaceState(reader, config, loopTime, lastState):
     """
         Extracts the state of the race from the given DictReader
 
@@ -198,19 +206,31 @@ def readRaceState(reader, loopTime, lastState):
     totalSegmentsNumber = 0
     segmentsRead = 0
 
+    raceStarted = True
+    raceFinished = True
+
     recordsNumber = 0
     for record in reader:
         if recordsNumber == 0:
+            # Computation that only have to be done once
             totalSegmentsNumber = computeSegmentsNumber(record)
+
         raceState.segmentsNumber = totalSegmentsNumber - 1
 
-        bibNumber = getInt(record, 'BibNumber')
+        if raceStarted and record['Start'] == '0':
+            raceStarted = False
+        
+        if raceFinished and record['Finish'] == '0':
+            raceFinished = False
+
+        bibNumber = getInt(record, BIB_NUMBER_FORMAT)
         if bibNumber is None:
-            logger.error('BibNumber error')
+            logger.error('Bib number error')
             continue
         
         splitTimes = readSplitTimes(record)
         segmentsRead += len(splitTimes)
+        currentCheckpoint = -1
 
         pace = 0
         stepDistance = 0
@@ -218,18 +238,18 @@ def readRaceState(reader, loopTime, lastState):
         averageSpeed = 0
             
         if len(splitTimes) > 0:
-            currentSegmentId = len(splitTimes) - 1
-            segmentDistanceFromStart = getInt(record, 'D%d' % (currentSegmentId, ))
+            currentCheckpoint = len(splitTimes) - 1
+            segmentDistanceFromStart = config['segments'][currentCheckpoint]
 
             if segmentDistanceFromStart is None:
-                logger.error('Error while reading field D%d for team %s', currentSegmentId, bibNumber)
+                logger.error('Could not compute segment distance from start (id=%d) for team %d', currentCheckpoint, bibNumber)
                 continue
 
             # Computing some estimations : average pace, covered distance since the last loop
             if segmentDistanceFromStart > 0:
-                pace = splitTimes[currentSegmentId] * 1000 / segmentDistanceFromStart
-                if splitTimes[currentSegmentId] > 0:
-                    averageSpeed = segmentDistanceFromStart / splitTimes[currentSegmentId]
+                pace = splitTimes[currentCheckpoint] * 1000 / segmentDistanceFromStart
+                if splitTimes[currentCheckpoint] > 0:
+                    averageSpeed = segmentDistanceFromStart / splitTimes[currentCheckpoint]
                 stepDistance = averageSpeed * loopTime
 
         try:
@@ -241,7 +261,7 @@ def readRaceState(reader, loopTime, lastState):
             lastTeamState = None
 
         teamState = TeamState(bibNumber, lastTeamState)
-        teamState.currentSegment = currentSegmentId
+        teamState.currentSegment = currentCheckpoint if record['Finish'] == '0' else raceState.segmentsNumber
         teamState.pace = pace
         teamState.segmentDistanceFromStart = segmentDistanceFromStart
         teamState.stepDistance = stepDistance
@@ -251,13 +271,17 @@ def readRaceState(reader, loopTime, lastState):
         recordsNumber += 1
 
     # Updating the status of the race for the current state
-    status = computeRaceStatus(segmentsRead, totalSegmentsNumber * recordsNumber)
-    raceState.setStatus(status)
+    if raceFinished:
+        raceState.setStatus(RaceStatus.FINISHED)
+    elif raceStarted:
+        raceState.setStatus(RaceStatus.RUNNING)
+    else:
+        raceState.setStatus(RaceStatus.WAITING)
     
     return raceState
 
 
-def readRaceStateFromFile(filePath, loopTime, lastState):
+def readRaceStateFromFile(filePath, config, loopTime, lastState):
     """
         Extracts the current state of the race from the given race file
 
@@ -282,7 +306,7 @@ def readRaceStateFromFile(filePath, loopTime, lastState):
         with open(filePath, 'r') as f:
             reader = csv.DictReader(f, delimiter='\t')
 
-            raceState = readRaceState(reader, loopTime, lastState)
+            raceState = readRaceState(reader, config, loopTime, lastState)
     except IOError as e:
         logger.error('IOError : %s', e)
     
@@ -304,17 +328,17 @@ def readSplitTimes(record):
     """
     splitTimes = []
 
-    i = 0
+    i = 1
     # Retreiving all segments Si while Si is a valid key in record
     while True:
-        segmentName = 'S%d' % (i, )
+        segmentName = SEGMENT_NAME_FORMAT % (i, )
         
         value = getInt(record, segmentName)
 
         if value is None:
             break
 
-        if value >= 0:
+        if value > 0:
             splitTimes.append(value)
             i += 1
         else:

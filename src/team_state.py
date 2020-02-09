@@ -28,6 +28,7 @@ class TeamState:
         self.rankChanged = False
         self.stepDistanceChanged = False
         self.segmentDistanceFromStartChanged = False
+        self.statusChanged = False
 
     @property
     def coveredDistance(self):
@@ -41,9 +42,6 @@ class TeamState:
     @stateProperty('currentSegment', 'currentSegmentChanged')
     def currentSegment(self, currentSegment):
         self._currentSegment = currentSegment
-
-    def hasChanged(self):
-        return self.currentSegmentChanged or self.rankChanged
 
     @property
     def oldRank(self):

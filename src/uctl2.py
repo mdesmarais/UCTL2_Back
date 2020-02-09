@@ -101,12 +101,12 @@ async def main():
     if race is False:
         sys.exit(-1)
 
+    await asyncio.sleep(5)
     # Sending initial informations to the server (route, teams, segments, race infos)
     if not sendRace(race, config['api']['baseUrl'], config['api']['actions']['setupRace']):
         logger.error('Unable to send initial race informations')
         sys.exit(-1)
     
-    await asyncio.sleep(10)
     # @TODO should we send the race or let the client request the race to the db ?
     await notifier.broadcastEvent(events.RACE_SETUP, race)
     
