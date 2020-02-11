@@ -19,18 +19,10 @@ class RaceState:
 
     def __init__(self, lastState=None):
         self.lastStatus = RaceStatus.UNKNOWN
+        self.distance = 0
         self.teams = []
 
         self.status = RaceStatus.UNKNOWN if lastState is None else lastState.status
-
-    def addTeam(self, team):
-        """
-            Adds a team to the current race state
-
-            :param team: team to add
-            :ptype team: dict
-        """
-        self.teams.append(team)
 
     def statusChanged(self):
         """

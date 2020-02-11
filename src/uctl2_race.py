@@ -23,7 +23,11 @@ MAX_NETWORK_ERRORS = 10
 REQUESTS_DELAY = 5
 
 BIB_NUMBER_FORMAT = 'Numéro'
+TEAM_NAME_FORMAT = 'Nom'
 SEGMENT_NAME_FORMAT = 'Interm (S%d)'
+DISTANCE_FORMAT = 'Distance'
+START_FORMAT = 'Start'
+FINISH_FORMAT = 'Finish'
 
 
 async def broadcastRace(race, config, session):
@@ -39,6 +43,7 @@ async def broadcastRace(race, config, session):
     currentTime = time.time()
 
     state = None
+    firstLoop = True
     raceFile = config['raceFile']
 
     baseUrl = config['api']['baseUrl']
@@ -53,13 +58,22 @@ async def broadcastRace(race, config, session):
         state = await readRaceStateFromFile(raceFile, config, loopTime, state, session, retreiveFileUrl)
         print('update')
 
-        if state.status == RaceStatus.WAITING or state.status == RaceStatus.UNKNOWN:
-            print('waiting for race')
-            continue
-
         # Stores async tasks that have to be executed
         # before the end of the loop
         tasks = []
+
+        if firstLoop:
+            firstLoop = False
+            race.distance = state.distance
+
+            for team in state.teams:
+                race.addTeam(team.name, team.bibNumber, team.pace)
+            
+            tasks.append(notifier.broadcastEvent(events.RACE_SETUP, race.toJSON()))
+
+        if state.status == RaceStatus.WAITING or state.status == RaceStatus.UNKNOWN:
+            print('waiting for race')
+            continue
 
         if state is None:
             logger.warning('The given race file does not contain any teams')
@@ -100,7 +114,8 @@ async def broadcastRace(race, config, session):
 
                 notifier.broadcastEventLater(events.TEAM_MOVE, {
                     'bibNumber': team.bibNumber,
-                    'pos': race.plainRacePoints[i]
+                    'pos': race.plainRacePoints[i],
+                    'progression': team.coveredDistance / race.distance
                 })
         
         tasks.append(asyncio.ensure_future(notifier.broadcastEvents()))
@@ -225,10 +240,10 @@ def readRaceState(reader, config, loopTime, lastState):
     raceFinished = True
 
     recordsNumber = 0
-    for record in reader:
-        if recordsNumber == 0:
-            # Computation that only have to be done once
+    for index, record in enumerate(reader):
+        if lastState is None:
             totalSegmentsNumber = computeSegmentsNumber(record)
+            raceState.distance = getInt(record, DISTANCE_FORMAT) * 1000
 
         raceState.segmentsNumber = totalSegmentsNumber - 1
 
@@ -251,37 +266,40 @@ def readRaceState(reader, config, loopTime, lastState):
         stepDistance = 0
         segmentDistanceFromStart = 0
         averageSpeed = 0
-            
+
         if len(splitTimes) > 0:
             currentCheckpoint = len(splitTimes) - 1
-            segmentDistanceFromStart = config['segments'][currentCheckpoint]
+            checkpointDistanceFromStart = config['checkpoints'][currentCheckpoint]
 
-            if segmentDistanceFromStart is None:
-                logger.error('Could not compute segment distance from start (id=%d) for team %d', currentCheckpoint, bibNumber)
+            if checkpointDistanceFromStart is None:
+                logger.error('Could not compute checkpoint distance from start (id=%d) for team %d', currentCheckpoint, bibNumber)
                 continue
 
             # Computing some estimations : average pace, covered distance since the last loop
-            if segmentDistanceFromStart > 0:
-                pace = splitTimes[currentCheckpoint] * 1000 / segmentDistanceFromStart
-                if splitTimes[currentCheckpoint] > 0:
-                    averageSpeed = segmentDistanceFromStart / splitTimes[currentCheckpoint]
-                stepDistance = averageSpeed * loopTime
+            if checkpointDistanceFromStart == 0:
+                # @FIXME :(
+                checkpointDistanceFromStart = 1
+
+            pace = splitTimes[currentCheckpoint] * 1000 / checkpointDistanceFromStart
+            if splitTimes[currentCheckpoint] > 0:
+                averageSpeed = checkpointDistanceFromStart / splitTimes[currentCheckpoint]
+            stepDistance = averageSpeed * loopTime
 
         try:
             if lastState is not None:
-                lastTeamState = lastState.teams[list(map(lambda t: t.bibNumber, lastState.teams)).index(bibNumber)]
+                lastTeamState = lastState.teams[index]
             else:
                 lastTeamState = None
         except ValueError:
             lastTeamState = None
 
-        teamState = TeamState(bibNumber, lastTeamState)
-        teamState.currentSegment = currentCheckpoint if record['Finish'] == '0' else raceState.segmentsNumber
+        teamState = TeamState(bibNumber, record[TEAM_NAME_FORMAT], lastTeamState)
+        teamState.currentSegment = currentCheckpoint if record[FINISH_FORMAT] == '0' else raceState.segmentsNumber
         teamState.pace = pace
         teamState.segmentDistanceFromStart = segmentDistanceFromStart
         teamState.stepDistance = stepDistance
 
-        raceState.addTeam(teamState)
+        raceState.teams.append(teamState)
 
         recordsNumber += 1
 
@@ -294,11 +312,6 @@ def readRaceState(reader, config, loopTime, lastState):
         raceState.setStatus(RaceStatus.WAITING)
     
     return raceState
-
-
-def pouet(stream):
-    while not stream.at_eof():
-        yield stream.readline()
 
 
 async def readRaceStateFromFile(filePath, config, loopTime, lastState, session, url):

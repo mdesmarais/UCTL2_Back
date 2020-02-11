@@ -22,9 +22,10 @@ class Config(dict):
         self.__dict__ = self
 
         self.raceName = 'Unknown'
+        self.raceLength = 0
         self.startTime = int(datetime.now().timestamp())
         self.teams = []
-        self.segments = []
+        self.checkpoints = []
         self.raceFile = 'not set'
         self.routeFile = 'not set'
         self.simPath = 'not set'
@@ -60,6 +61,8 @@ class Config(dict):
         config = Config()
         config.raceName = jsonConfig['raceName']
 
+        config.raceLength = jsonConfig['raceLength']
+
         timestamp = jsonConfig['startTime']
         try:
             datetime.fromtimestamp(timestamp)
@@ -68,7 +71,7 @@ class Config(dict):
             print('Race start time must be a valid timestamp')
             return None
         
-        config.segments = jsonConfig['segments']
+        config.checkpoints = jsonConfig['checkpoints']
 
         routeFile = jsonConfig['routeFile']
         if routeFile.endswith('.gpx') or routeFile.endswith('.json'):

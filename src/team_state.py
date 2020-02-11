@@ -13,8 +13,9 @@ def stateProperty(attr, status):
 
 class TeamState:
 
-    def __init__(self, bibNumber, lastState=None):
+    def __init__(self, bibNumber, name, lastState=None):
         self.bibNumber = bibNumber
+        self.name = name
         self.lastState = lastState
 
         self._currentSegment = -1

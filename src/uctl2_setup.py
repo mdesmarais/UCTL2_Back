@@ -131,11 +131,7 @@ def readRace(config):
     if points is False:
         return False
 
-    race = Race(config['raceName'], computeDistances(points))
-    for team in config['teams']:
-        race.addTeam(team['name'], team['bibNumber'], team['pace'])
-
-    return race
+    return Race(config['raceName'], computeDistances(points))
 
 
 def sendRace(race, baseUrl, action):

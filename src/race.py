@@ -7,6 +7,7 @@ class Race:
 
     def __init__(self, name, racePoints):
         self.name = name
+        self.distance = 0
         self.racePoints = racePoints
         self.plainRacePoints = list((p[0], p[1]) for p in racePoints)
         self.status = RaceStatus.WAITING
@@ -24,6 +25,7 @@ class Race:
     def toJSON(self):
         return {
             'name': self.name,
+            'distance': self.distance,
             'status': self.status,
             'racePoints': self.plainRacePoints,
             'startTime': self.startTime,
