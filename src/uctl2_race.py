@@ -51,6 +51,7 @@ async def broadcastRace(race, config, session):
         loopTime = int(time.time() - startTime)
         startTime = time.time()
         state = await readRaceStateFromFile(raceFile, config, loopTime, state, session, retreiveFileUrl)
+        print('update')
 
         if state.status == RaceStatus.WAITING or state.status == RaceStatus.UNKNOWN:
             print('waiting for race')
@@ -92,7 +93,7 @@ async def broadcastRace(race, config, session):
                     'teams': computeOvertakenTeams(team, state.teams)
                 })
 
-            """if team.stepDistanceChanged or team.segmentDistanceFromStartChanged:
+            if team.stepDistanceChanged or team.segmentDistanceFromStartChanged:
                 i = 0
                 while i < len(race['racePoints']) and race['racePoints'][i][3] < team.coveredDistance:
                     i += 1
@@ -101,7 +102,7 @@ async def broadcastRace(race, config, session):
                 notifier.broadcastEventLater(events.TEAM_MOVE, {
                     'bibNumber': team.bibNumber,
                     'pos': (racePoint[0], racePoint[1])
-                })"""
+                })
         
         tasks.append(asyncio.ensure_future(notifier.broadcastEvents()))
 
@@ -115,7 +116,7 @@ async def broadcastRace(race, config, session):
                 'startTime': config['startTime']
             }
 
-            tasks.append(asyncio.ensure_future(sendPostRequest(session, baseUrl, updateRaceStatus, event)))
+            #tasks.append(asyncio.ensure_future(sendPostRequest(session, baseUrl, updateRaceStatus, event)))
             tasks.append(asyncio.ensure_future(notifier.broadcastEvent(events.RACE_STATUS, event)))
 
         # Waits for all async tasks    
@@ -312,14 +313,19 @@ async def readRaceStateFromFile(filePath, config, loopTime, lastState, session, 
     raceState = None
 
     try:
+        print('wait for file')
+        content = ''
         async with session.get(url) as r:
             content = await r.text()
+            print('file downloaded')
+        reader = csv.DictReader(content.split('\n'), delimiter='\t')
 
-            reader = csv.DictReader(content.split('\n'), delimiter='\t')
-
-            raceState = readRaceState(reader, config, loopTime, lastState)
+        raceState = readRaceState(reader, config, loopTime, lastState)
+        print('state ok')
     except IOError as e:
         logger.error('IOError : %s', e)
+    except aiohttp.client_exceptions.ServerDisconnectedError:
+        return await readRaceStateFromFile(filePath, config, loopTime, lastState, session, url)
     
     return raceState
 
