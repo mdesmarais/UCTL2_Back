@@ -76,7 +76,7 @@ async def main():
     ch = logging.StreamHandler()
     formatter = logging.Formatter('[%(levelname)s] %(name)s - %(message)s')
     ch.setFormatter(formatter)
-    logging.basicConfig(handlers=[ch], level=logging.INFO)
+    logging.basicConfig(handlers=[ch], level=logging.DEBUG)
 
     logger = logging.getLogger(__name__)
 
@@ -101,17 +101,16 @@ async def main():
     if race is False:
         sys.exit(-1)
 
-    await asyncio.sleep(5)
     # Sending initial informations to the server (route, teams, segments, race infos)
-    if not sendRace(race, config['api']['baseUrl'], config['api']['actions']['setupRace']):
-        logger.error('Unable to send initial race informations')
-        sys.exit(-1)
+    #if not sendRace(race, config['api']['baseUrl'], config['api']['actions']['setupRace']):
+    #    logger.error('Unable to send initial race informations')
+    #    sys.exit(-1)
     
     # @TODO should we send the race or let the client request the race to the db ?
-    await notifier.broadcastEvent(events.RACE_SETUP, race)
+    await notifier.broadcastSetupEvent(race)
     
     # Starting simulation
-    Thread(target=executeSimulation, args=[config['simPath'], configFile]).start()
+    #Thread(target=executeSimulation, args=[config['simPath'], configFile]).start()
 
     # Starting the race file broadcasting
     async with aiohttp.ClientSession() as session:

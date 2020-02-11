@@ -1,6 +1,7 @@
 import asyncio
 import csv
 import json
+import io
 import itertools
 import logging
 import math
@@ -19,7 +20,7 @@ from team_state import TeamState
 
 DEBUG_DATA_SENT = True
 MAX_NETWORK_ERRORS = 10
-REQUESTS_DELAY = 1
+REQUESTS_DELAY = 5
 
 BIB_NUMBER_FORMAT = 'Numéro'
 SEGMENT_NAME_FORMAT = 'Interm (S%d)'
@@ -42,13 +43,14 @@ async def broadcastRace(race, config, session):
 
     baseUrl = config['api']['baseUrl']
     updateRaceStatus = config['api']['actions']['updateRaceStatus']
-    updateTeams = config['api']['actions']['updateTeams']
+    #updateTeams = config['api']['actions']['updateTeams']
+
+    retreiveFileUrl = urllib.parse.urljoin(baseUrl, config['api']['actions']['retreiveFile'])
 
     while True:
-        await asyncio.sleep(REQUESTS_DELAY)
         loopTime = int(time.time() - startTime)
         startTime = time.time()
-        state = readRaceStateFromFile(raceFile, config, loopTime, state)
+        state = await readRaceStateFromFile(raceFile, config, loopTime, state, session, retreiveFileUrl)
 
         if state.status == RaceStatus.WAITING or state.status == RaceStatus.UNKNOWN:
             print('waiting for race')
@@ -122,6 +124,8 @@ async def broadcastRace(race, config, session):
         
         if state.status == RaceStatus.FINISHED:
             break
+        
+        await asyncio.sleep(REQUESTS_DELAY)
 
     logger.info('End of the broadcast')
 
@@ -281,7 +285,12 @@ def readRaceState(reader, config, loopTime, lastState):
     return raceState
 
 
-def readRaceStateFromFile(filePath, config, loopTime, lastState):
+def pouet(stream):
+    while not stream.at_eof():
+        yield stream.readline()
+
+
+async def readRaceStateFromFile(filePath, config, loopTime, lastState, session, url):
     """
         Extracts the current state of the race from the given race file
 
@@ -303,8 +312,10 @@ def readRaceStateFromFile(filePath, config, loopTime, lastState):
     raceState = None
 
     try:
-        with open(filePath, 'r') as f:
-            reader = csv.DictReader(f, delimiter='\t')
+        async with session.get(url) as r:
+            content = await r.text()
+
+            reader = csv.DictReader(content.split('\n'), delimiter='\t')
 
             raceState = readRaceState(reader, config, loopTime, lastState)
     except IOError as e:
