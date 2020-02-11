@@ -6,6 +6,8 @@ import gpxpy
 import requests
 from haversine import haversine
 
+from race import Race
+
 
 def computeDistances(points):
     """
@@ -129,25 +131,11 @@ def readRace(config):
     if points is False:
         return False
 
-    teams = []
+    race = Race(config['raceName'], computeDistances(points))
     for team in config['teams']:
-        # Initial informations to send for each team
-        teams.append({
-            'name': team['name'],
-            'bibNumber': team['bibNumber'],
-            # Initial position
-            'pos': (points[0][0], points[0][1])
-        })
+        race.addTeam(team['name'], team['bibNumber'], team['pace'])
 
-    return {
-        'teams': teams,
-        'racePoints': computeDistances(points),
-        'infos': {
-            'name': config['raceName'],
-            'type': 'trail',
-            'startTime': config['startTime']
-        }
-    }
+    return race
 
 
 def sendRace(race, baseUrl, action):

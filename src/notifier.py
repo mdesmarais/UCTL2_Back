@@ -11,7 +11,7 @@ delayedEvents = []
 
 clients = []
 stop = asyncio.get_event_loop().create_future()
-setupEvent = None
+race = None
 
 async def broadcastEvent(id, payload):
     """
@@ -27,12 +27,6 @@ async def broadcastEvent(id, payload):
         'payload': payload
     }])
 
-
-async def broadcastSetupEvent(payload):
-    global setupEvent
-
-    setupEvent = payload
-    await broadcastEvent(customEvent.RACE_SETUP, payload)
 
 def broadcastEventLater(id, payload):
     delayedEvents.append({
@@ -73,11 +67,8 @@ async def broadcaster():
 async def consumerHandler(websocket, path):
     clients.append(websocket)
 
-    if setupEvent is not None:
-        await websocket.send(json.dumps([{
-            'id': customEvent.RACE_SETUP,
-            'payload': setupEvent
-        }]))
+    if race is not None:
+        await broadcastEvent(customEvent.RACE_SETUP, race.toJSON())
 
     # The handler needs to wait the end of the server in order
     # to keep the connection opened

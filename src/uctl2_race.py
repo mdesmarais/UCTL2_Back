@@ -36,20 +36,20 @@ async def broadcastRace(race, config, session):
     logger = logging.getLogger(__name__)
 
     loopTime = 0
-    startTime = time.time()
+    currentTime = time.time()
 
     state = None
     raceFile = config['raceFile']
 
     baseUrl = config['api']['baseUrl']
-    updateRaceStatus = config['api']['actions']['updateRaceStatus']
+    #updateRaceStatus = config['api']['actions']['updateRaceStatus']
     #updateTeams = config['api']['actions']['updateTeams']
 
     retreiveFileUrl = urllib.parse.urljoin(baseUrl, config['api']['actions']['retreiveFile'])
 
     while True:
-        loopTime = int(time.time() - startTime)
-        startTime = time.time()
+        loopTime = int(time.time() - currentTime)
+        currentTime = time.time()
         state = await readRaceStateFromFile(raceFile, config, loopTime, state, session, retreiveFileUrl)
         print('update')
 
@@ -95,13 +95,12 @@ async def broadcastRace(race, config, session):
 
             if team.stepDistanceChanged or team.segmentDistanceFromStartChanged:
                 i = 0
-                while i < len(race['racePoints']) and race['racePoints'][i][3] < team.coveredDistance:
+                while i < len(race.racePoints) and race.racePoints[i][3] < team.coveredDistance:
                     i += 1
 
-                racePoint = race['racePoints'][i]
                 notifier.broadcastEventLater(events.TEAM_MOVE, {
                     'bibNumber': team.bibNumber,
-                    'pos': (racePoint[0], racePoint[1])
+                    'pos': race.plainRacePoints[i]
                 })
         
         tasks.append(asyncio.ensure_future(notifier.broadcastEvents()))
@@ -110,10 +109,15 @@ async def broadcastRace(race, config, session):
         
         if state.statusChanged():
             logger.debug('New race status : %s', state.status)
+            race.status = state.status
+
+            if state.status == RaceStatus.RUNNING:
+                race.startTime = int(time.time())
+
             event = {
                 'race': config['raceName'],
                 'status': state.status,
-                'startTime': config['startTime']
+                'startTime': race.startTime
             }
 
             #tasks.append(asyncio.ensure_future(sendPostRequest(session, baseUrl, updateRaceStatus, event)))
@@ -187,6 +191,12 @@ def getInt(container, key):
             return None
     
     return None
+
+
+def getRaceInfos():
+    return {
+
+    }
 
 
 def readRaceState(reader, config, loopTime, lastState):

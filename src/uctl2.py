@@ -97,6 +97,7 @@ async def main():
         sys.exit(-1)
     
     race = readRace(config)
+    notifier.race = race
 
     if race is False:
         sys.exit(-1)
@@ -107,7 +108,7 @@ async def main():
     #    sys.exit(-1)
     
     # @TODO should we send the race or let the client request the race to the db ?
-    await notifier.broadcastSetupEvent(race)
+    await notifier.broadcastEvent(events.RACE_SETUP, race.toJSON)
     
     # Starting simulation
     #Thread(target=executeSimulation, args=[config['simPath'], configFile]).start()
