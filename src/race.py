@@ -19,7 +19,8 @@ class Race:
             'name': name,
             'bibNumber': bib,
             'pace': pace,
-            'pos': self.plainRacePoints[0]
+            'pos': self.plainRacePoints[0],
+            'progress': 0
         })
 
     def toJSON(self):

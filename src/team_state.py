@@ -22,9 +22,11 @@ class TeamState:
         self._rank = 0
         self._segmentDistanceFromStart = 0
         self._stepDistance = 0
+        self._coveredDistance = 0 if lastState is None else lastState.coveredDistance
 
         self.pace = 0
 
+        self.coveredDistanceChanged = False
         self.currentSegmentChanged = False
         self.rankChanged = False
         self.stepDistanceChanged = False
@@ -33,8 +35,13 @@ class TeamState:
 
     @property
     def coveredDistance(self):
-        return self._stepDistance + self._segmentDistanceFromStart
-    
+        return self._coveredDistance
+
+    @coveredDistance.setter
+    @stateProperty('coveredDistance', 'coveredDistanceChanged')
+    def coveredDistance(self, coveredDistance):
+        self._coveredDistance = coveredDistance
+
     @property
     def currentSegment(self):
         return self._currentSegment

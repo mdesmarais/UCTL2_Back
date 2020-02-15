@@ -24,6 +24,7 @@ class Config(dict):
         self.raceName = 'Unknown'
         self.raceLength = 0
         self.startTime = int(datetime.now().timestamp())
+        self.tickStep = 0
         self.teams = []
         self.checkpoints = []
         self.raceFile = 'not set'
@@ -62,6 +63,7 @@ class Config(dict):
         config.raceName = jsonConfig['raceName']
 
         config.raceLength = jsonConfig['raceLength']
+        config.tickStep = int(jsonConfig['tickStep'])
 
         timestamp = jsonConfig['startTime']
         try:

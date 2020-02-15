@@ -2,6 +2,7 @@ import asyncio
 import csv
 import json
 import io
+import datetime
 import itertools
 import logging
 import math
@@ -24,10 +25,10 @@ REQUESTS_DELAY = 5
 
 BIB_NUMBER_FORMAT = 'Numéro'
 TEAM_NAME_FORMAT = 'Nom'
-SEGMENT_NAME_FORMAT = 'Interm (S%d)'
+SEGMENT_NAME_FORMAT = 'Interm (TR%d)'
 DISTANCE_FORMAT = 'Distance'
-START_FORMAT = 'Start'
-FINISH_FORMAT = 'Finish'
+START_FORMAT = '33|1'
+FINISH_FORMAT = '33|6'
 
 
 async def broadcastRace(race, config, session):
@@ -107,7 +108,7 @@ async def broadcastRace(race, config, session):
                     'teams': computeOvertakenTeams(team, state.teams)
                 })
 
-            if team.stepDistanceChanged or team.segmentDistanceFromStartChanged:
+            if team.coveredDistanceChanged or team.segmentDistanceFromStartChanged:
                 i = 0
                 while i < len(race.racePoints) and race.racePoints[i][3] < team.coveredDistance:
                     i += 1
@@ -208,12 +209,6 @@ def getInt(container, key):
     return None
 
 
-def getRaceInfos():
-    return {
-
-    }
-
-
 def readRaceState(reader, config, loopTime, lastState):
     """
         Extracts the state of the race from the given DictReader
@@ -241,16 +236,20 @@ def readRaceState(reader, config, loopTime, lastState):
 
     recordsNumber = 0
     for index, record in enumerate(reader):
+        # @TODO coup dur
+        if index > 4:
+            break
+
         if lastState is None:
             totalSegmentsNumber = computeSegmentsNumber(record)
-            raceState.distance = getInt(record, DISTANCE_FORMAT) * 1000
+            raceState.distance = getInt(record, DISTANCE_FORMAT)
 
         raceState.segmentsNumber = totalSegmentsNumber - 1
 
-        if raceStarted and record['Start'] == '0':
+        if raceStarted and record[START_FORMAT] == '':
             raceStarted = False
         
-        if raceFinished and record['Finish'] == '0':
+        if raceFinished and record[FINISH_FORMAT] == '':
             raceFinished = False
 
         bibNumber = getInt(record, BIB_NUMBER_FORMAT)
@@ -268,22 +267,19 @@ def readRaceState(reader, config, loopTime, lastState):
         averageSpeed = 0
 
         if len(splitTimes) > 0:
-            currentCheckpoint = len(splitTimes) - 1
-            checkpointDistanceFromStart = config['checkpoints'][currentCheckpoint]
+            currentCheckpoint = len(splitTimes) - 1 if len(splitTimes) > 0 else 0
+            checkpointDistanceFromStart = config['checkpoints'][currentCheckpoint] if len(splitTimes) > 0 else 0
 
             if checkpointDistanceFromStart is None:
                 logger.error('Could not compute checkpoint distance from start (id=%d) for team %d', currentCheckpoint, bibNumber)
                 continue
 
             # Computing some estimations : average pace, covered distance since the last loop
-            if checkpointDistanceFromStart == 0:
-                # @FIXME :(
-                checkpointDistanceFromStart = 1
-
-            pace = splitTimes[currentCheckpoint] * 1000 / checkpointDistanceFromStart
-            if splitTimes[currentCheckpoint] > 0:
-                averageSpeed = checkpointDistanceFromStart / splitTimes[currentCheckpoint]
-            stepDistance = averageSpeed * loopTime
+            if  checkpointDistanceFromStart > 0:
+                pace = splitTimes[currentCheckpoint] * 1000 / checkpointDistanceFromStart
+                if splitTimes[currentCheckpoint] > 0:
+                    averageSpeed = checkpointDistanceFromStart / splitTimes[currentCheckpoint]
+                stepDistance = averageSpeed * loopTime * config['tickStep']
 
         try:
             if lastState is not None:
@@ -297,8 +293,7 @@ def readRaceState(reader, config, loopTime, lastState):
         teamState.currentSegment = currentCheckpoint if record[FINISH_FORMAT] == '0' else raceState.segmentsNumber
         teamState.pace = pace
         teamState.segmentDistanceFromStart = segmentDistanceFromStart
-        teamState.stepDistance = stepDistance
-
+        teamState.coveredDistance += stepDistance
         raceState.teams.append(teamState)
 
         recordsNumber += 1
@@ -339,6 +334,7 @@ async def readRaceStateFromFile(filePath, config, loopTime, lastState, session, 
         print('wait for file')
         content = ''
         async with session.get(url) as r:
+            #content = await r.text(encoding='iso8859_3')
             content = await r.text()
             print('file downloaded')
         reader = csv.DictReader(content.split('\n'), delimiter='\t')
@@ -374,6 +370,13 @@ def readSplitTimes(record):
         segmentName = SEGMENT_NAME_FORMAT % (i, )
         
         value = getInt(record, segmentName)
+        """if not segmentName in record:
+            break
+
+        pouet = record[segmentName].split(':')
+        if len(pouet) == 1:
+            break
+        value = int(pouet[0]) * 3600 + int(pouet[1]) * 60 + int(pouet[2])"""
 
         if value is None:
             break
