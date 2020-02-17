@@ -76,7 +76,7 @@ async def main():
     ch = logging.StreamHandler()
     formatter = logging.Formatter('[%(levelname)s] %(name)s - %(message)s')
     ch.setFormatter(formatter)
-    logging.basicConfig(handlers=[ch], level=logging.DEBUG)
+    logging.basicConfig(handlers=[ch], level=logging.INFO)
 
     logger = logging.getLogger(__name__)
 
@@ -108,7 +108,7 @@ async def main():
     #    sys.exit(-1)
     
     # Starting simulation
-    #Thread(target=executeSimulation, args=[config['simPath'], configFile]).start()
+    Thread(target=executeSimulation, args=[config['simPath'], configFile]).start()
 
     # Starting the race file broadcasting
     async with aiohttp.ClientSession() as session:
