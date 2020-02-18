@@ -109,6 +109,7 @@ async def main():
     
     # Starting simulation
     Thread(target=executeSimulation, args=[config['simPath'], configFile]).start()
+    await asyncio.sleep(2)
 
     # Starting the race file broadcasting
     async with aiohttp.ClientSession() as session:

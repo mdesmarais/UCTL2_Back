@@ -28,7 +28,7 @@ class RaceState:
     def __init__(self, lastState=None):
         self.lastStatus = RaceStatus.UNKNOWN
         self.checkpointsNumber = 0
-        self.distance = 0
+        self.distance = 0 if lastState is None else lastState.distance
         self.teams = []
 
         # Sets default race status from the previous state (is there is one)
@@ -85,10 +85,13 @@ def readRaceState(reader, config, loopTime, lastState):
 
         raceState.checkpointsNumber = totalCheckpointsNumber - 1
 
-        if raceStarted and record[race_file.START_FORMAT] == race_file.EMPTY_VALUE_FORMAT:
+        teamStarted = not record[race_file.START_FORMAT] == race_file.EMPTY_VALUE_FORMAT
+        teamFinished = not record[race_file.FINISH_FORMAT] == race_file.EMPTY_VALUE_FORMAT
+
+        if raceStarted and not teamStarted:
             raceStarted = False
         
-        if raceFinished and record[race_file.FINISH_FORMAT] == race_file.EMPTY_VALUE_FORMAT:
+        if raceFinished and not teamFinished:
             raceFinished = False
 
         bibNumber = race_file.getInt(record, race_file.BIB_NUMBER_FORMAT)
@@ -102,7 +105,6 @@ def readRaceState(reader, config, loopTime, lastState):
 
         pace = 0
         stepDistance = 0
-        averageSpeed = 0
 
         if len(splitTimes) > 0:
             currentCheckpoint = len(splitTimes) - 1 if len(splitTimes) > 0 else 0
@@ -118,6 +120,10 @@ def readRaceState(reader, config, loopTime, lastState):
                 if splitTimes[currentCheckpoint] > 0:
                     averageSpeed = checkpointDistanceFromStart / splitTimes[currentCheckpoint]
                 stepDistance = averageSpeed * loopTime * config['tickStep']
+        else:
+            # Default pace when we don't known each team's pace yet
+            pace = 400
+            stepDistance = 2.5 * loopTime * config['tickStep']
 
         try:
             if lastState is not None:
@@ -130,9 +136,16 @@ def readRaceState(reader, config, loopTime, lastState):
         # Creates a new team state for each team in the file
         # The name of the team if set if the column TEAM_NAME_FORMAT
         teamState = TeamState(bibNumber, record[race_file.TEAM_NAME_FORMAT], lastTeamState)
-        teamState.currentSegment = currentCheckpoint if record[race_file.FINISH_FORMAT] == '0' else raceState.checkpointsNumber
+        teamState.currentCheckpoint = currentCheckpoint if not teamFinished else raceState.checkpointsNumber
         teamState.pace = pace
-        teamState.coveredDistance += stepDistance
+
+        if teamFinished:
+            teamState.coveredDistance = raceState.distance * 1000
+        elif teamState.currentCheckpointChanged:
+            teamState.coveredDistance = checkpointDistanceFromStart
+        else:
+            teamState.coveredDistance += stepDistance
+
         raceState.teams.append(teamState)
 
     # Updating the status of the race for the current state

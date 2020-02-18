@@ -1,6 +1,7 @@
 import time
 
 from race_state import RaceStatus
+from team import Team
 
 
 class Race:
@@ -12,23 +13,23 @@ class Race:
         self.plainRacePoints = list((p[0], p[1]) for p in racePoints)
         self.status = RaceStatus.WAITING
         self.startTime = 0
-        self.teams = []
+        self.teams = {}
 
-    def addTeam(self, name, bib, pace):
-        self.teams.append({
-            'name': name,
-            'bibNumber': bib,
-            'pace': pace,
-            'pos': self.plainRacePoints[0],
-            'progress': 0
-        })
+    def addTeam(self, name, bib):
+        self.teams[bib] = Team(self, bib, name)
 
     def toJSON(self):
         return {
             'name': self.name,
             'distance': self.distance,
-            'status': self.status,
             'racePoints': self.plainRacePoints,
             'startTime': self.startTime,
-            'teams': self.teams
+            'teams': list(team.toJSON() for team in self.teams.values()),
+            'status': self.status
         }
+
+    def updateTeam(self, team, state):
+        team.coveredDistance = state.coveredDistance
+        team.pace = state.pace
+        team.rank = state.rank
+        team.currentCheckpoint = state.currentCheckpoint

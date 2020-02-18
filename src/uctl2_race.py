@@ -8,7 +8,7 @@ from race_state import RaceState, RaceStatus, readRaceStateFromFile, readRaceSta
 
 DEBUG_DATA_SENT = True
 MAX_NETWORK_ERRORS = 10
-REQUESTS_DELAY = 5
+REQUESTS_DELAY = 2
 
 
 async def broadcastRace(race, config, session):
@@ -48,11 +48,11 @@ async def broadcastRace(race, config, session):
             firstLoop = False
 
             # The distance of the race does not change during the broadcast
-            race.distance = state.distance
+            race.distance = state.distance * 1000
 
             # Initializes teams with default values (progression, position on the map, ...)
             for team in state.teams:
-                race.addTeam(team.name, team.bibNumber, team.pace)
+                race.addTeam(team.name, team.bibNumber)
             
             # Sends the first race state (initial informations) to all connected clients
             tasks.append(notifier.broadcastEvent(events.RACE_SETUP, race.toJSON()))
@@ -64,7 +64,7 @@ async def broadcastRace(race, config, session):
 
         if state is None:
             logger.error('Unable to read a race state from the given file')
-            break         
+            break
 
         # Sorts teams by their covered distance, in reverse order
         # The first team in the list is the leader of the race
@@ -75,37 +75,34 @@ async def broadcastRace(race, config, session):
             team.rank = rank + 1
 
         # @TODO compute those events only for a limited number of teams
-        for team in sortedTeams:
-            if team.currentSegmentChanged:
-                if team.currentSegment == state.checkpointsNumber:
+        for teamState in sortedTeams:
+            team = race.teams[teamState.bibNumber]
+            race.updateTeam(team, teamState)
+
+            if teamState.currentCheckpointChanged:
+                if team.currentCheckpoint == state.checkpointsNumber:
                     id = events.TEAM_END
                 else:
                     id = events.TEAM_CHECKPOINT
 
                 notifier.broadcastEventLater(id, {
-                    'bibNumber': team.bibNumber,
-                    'currentSegment': team.currentSegment + 1
+                    'bibNumber': teamState.bibNumber,
+                    'currentCheckpoint': team.currentCheckpoint + 1
                 })
             
-            if team.rankChanged and team.rank < team.oldRank:
+            if teamState.rankChanged and team.rank < team.oldRank:
                 notifier.broadcastEventLater(events.TEAM_OVERTAKE, {
                     'bibNumber': team.bibNumber,
                     'oldRank': team.oldRank,
                     'rank': team.rank,
-                    'teams': computeOvertakenTeams(team, state.teams)
+                    'teams': computeOvertakenTeams(team, race.teams)
                 })
 
-            if team.coveredDistanceChanged or team.segmentDistanceFromStartChanged:
-                i = 0
-                # racePoint = (lat, lon, alt, distance from start)
-                # plainRacePoint = (lat, lon)
-                while i < len(race.racePoints) and race.racePoints[i][3] < team.coveredDistance:
-                    i += 1
-
+            if teamState.currentCheckpointChanged or teamState.coveredDistanceChanged:
                 notifier.broadcastEventLater(events.TEAM_MOVE, {
                     'bibNumber': team.bibNumber,
-                    'pos': race.plainRacePoints[i],
-                    'progression': team.coveredDistance / race.distance
+                    'pos': team.pos,
+                    'progression': team.progression
                 })
         
         tasks.append(asyncio.ensure_future(notifier.broadcastEvents()))
@@ -143,7 +140,7 @@ async def broadcastRace(race, config, session):
 def computeOvertakenTeams(currentTeam, teams):
         overtakenTeams = []
 
-        for team in teams:
+        for team in teams.values():
             if not currentTeam.bibNumber == team.bibNumber and currentTeam.oldRank > team.oldRank and currentTeam.rank < team.rank:
                 overtakenTeams.append(team.bibNumber)
         

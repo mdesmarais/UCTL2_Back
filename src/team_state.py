@@ -18,20 +18,15 @@ class TeamState:
         self.name = name
         self.lastState = lastState
 
-        self._currentSegment = -1
+        self._currentCheckpoint = -1
         self._rank = 0
-        self._segmentDistanceFromStart = 0
-        self._stepDistance = 0
         self._coveredDistance = 0 if lastState is None else lastState.coveredDistance
 
         self.pace = 0
 
         self.coveredDistanceChanged = False
-        self.currentSegmentChanged = False
+        self.currentCheckpointChanged = False
         self.rankChanged = False
-        self.stepDistanceChanged = False
-        self.segmentDistanceFromStartChanged = False
-        self.statusChanged = False
 
     @property
     def coveredDistance(self):
@@ -43,20 +38,13 @@ class TeamState:
         self._coveredDistance = coveredDistance
 
     @property
-    def currentSegment(self):
-        return self._currentSegment
+    def currentCheckpoint(self):
+        return self._currentCheckpoint
     
-    @currentSegment.setter
-    @stateProperty('currentSegment', 'currentSegmentChanged')
-    def currentSegment(self, currentSegment):
-        self._currentSegment = currentSegment
-
-    @property
-    def oldRank(self):
-        if self.lastState is None:
-            return self.rank
-        else:
-            return self.lastState.rank
+    @currentCheckpoint.setter
+    @stateProperty('currentCheckpoint', 'currentCheckpointChanged')
+    def currentCheckpoint(self, currentCheckpoint):
+        self._currentCheckpoint = currentCheckpoint
 
     @property
     def rank(self):
@@ -70,21 +58,3 @@ class TeamState:
 
         if b:
             self.rankChanged = False
-
-    @property
-    def segmentDistanceFromStart(self):
-        return self._segmentDistanceFromStart
-
-    @segmentDistanceFromStart.setter
-    @stateProperty('segmentDistanceFromStart', 'segmentDistanceFromStartChanged')
-    def segmentDistanceFromStart(self, sdfs):
-        self._segmentDistanceFromStart = sdfs
-
-    @property
-    def stepDistance(self):
-        return self._stepDistance
-
-    @stepDistance.setter
-    @stateProperty('stepDistance', 'stepDistanceChanged')
-    def stepDistance(self, stepDistance):
-        self._stepDistance = stepDistance
