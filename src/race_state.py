@@ -138,6 +138,7 @@ def readRaceState(reader, config, loopTime, lastState):
         teamState = TeamState(bibNumber, record[race_file.TEAM_NAME_FORMAT], lastTeamState)
         teamState.currentCheckpoint = currentCheckpoint if not teamFinished else raceState.checkpointsNumber
         teamState.pace = pace
+        teamState.splitTimes = splitTimes
 
         if teamFinished:
             teamState.coveredDistance = raceState.distance * 1000

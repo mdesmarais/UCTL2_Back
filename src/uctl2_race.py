@@ -85,9 +85,16 @@ async def broadcastRace(race, config, session):
                 else:
                     id = events.TEAM_CHECKPOINT
 
+                lastSplitTime = teamState.splitTimes[team.currentCheckpoint]
+                # Pace computation : Xs * 1000m / segment distance (in meters)
+                averagePace = lastSplitTime * 1000 / race.checkpoints[team.currentCheckpoint][1]
+
                 notifier.broadcastEventLater(id, {
                     'bibNumber': teamState.bibNumber,
-                    'currentCheckpoint': team.currentCheckpoint + 1
+                    'currentCheckpoint': team.currentCheckpoint + 1,
+                    'lastCheckpoint': team.currentCheckpoint,
+                    'splitTime': lastSplitTime,
+                    'averagePace': averagePace
                 })
             
             if teamState.rankChanged and team.rank < team.oldRank:

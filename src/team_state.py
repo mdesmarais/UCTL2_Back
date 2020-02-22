@@ -23,6 +23,7 @@ class TeamState:
         self._coveredDistance = 0 if lastState is None else lastState.coveredDistance
 
         self.pace = 0
+        self.splitTimes = []
 
         self.coveredDistanceChanged = False
         self.currentCheckpointChanged = False

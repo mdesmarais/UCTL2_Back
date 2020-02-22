@@ -131,7 +131,16 @@ def readRace(config):
     if points is False:
         return False
 
-    return Race(config['raceName'], computeDistances(points))
+    plainCheckpoints = config['checkpoints']
+    checkpoints = []
+    lastCheckpoint = 0
+
+    for checkpoint in plainCheckpoints:
+        cp = (lastCheckpoint, checkpoint - lastCheckpoint)
+        lastCheckpoint = checkpoint
+        checkpoints.append(cp)
+
+    return Race(config['raceName'], computeDistances(points), checkpoints)
 
 
 def sendRace(race, baseUrl, action):
