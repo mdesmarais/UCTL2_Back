@@ -1,0 +1,55 @@
+payload:
+    checkpoints: Liste des spéciales de la course
+        type: Array
+        items:
+            item0: Position dans la course en mètres
+            item1: Longueur de la spéciale
+
+    distance: Longueur de la course en mètres
+        type: Integer
+
+    name: Nom de la course
+        type: String
+
+    racePoints: Liste de coordonnées GPS représentant le parcours
+        type: Array
+        items:
+            type: Array
+            item:
+                item0: Latitude
+                    type: Number
+                item1: Longitude
+                    type: Number
+    
+    startTime: Timestamp représentant l'heure de départ de la course
+        type: Timestamp
+    
+    status: Statut actuel de la course (0, 1 ou 2)
+        type: Integer
+
+    teams: Liste des équipes
+        type: Array
+        items:
+            type: Object
+            item:
+                bibNumber: Numéro de dossard
+                    type: Integer
+                coveredDistance: Distance parcourue en mètres
+                    type: Integer
+                currentCheckpoint: Numéro de la spéciale courante (commence à 0)
+                    type: Integer
+                name: Nom de l'équipes
+                    type: String
+                oldRank: Ancien rang de l'équipe
+                    type: Integer
+                pace: Allure moyenne de l'équipe (nombre de secondes pour 1000m)
+                    type: Integer
+                pos: Position GPS de l'équipe
+                    type: Array
+                    items:
+                        item0: Latitude
+                        item1: Longitude
+                progression: Pourcentage de progression dans la course (entre 0 et 100)
+                    type: Number
+                rank: Rang actuel de l'équipe
+                    type: Integer
