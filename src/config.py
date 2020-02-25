@@ -1,8 +1,7 @@
 import json
 import os.path
-from datetime import datetime
 
-from jsonschema import validate
+import jsonschema
 
 from config_schema import CONFIG_SCHEMA
 
@@ -22,22 +21,26 @@ class Config(dict):
         self.__dict__ = self
 
         self.raceName = 'Unknown'
-        self.raceLength = 0
-        self.startTime = int(datetime.now().timestamp())
         self.tickStep = 0
-        self.teams = []
         self.checkpoints = []
         self.raceFile = 'not set'
         self.routeFile = 'not set'
         self.simPath = 'not set'
-        self.api = {
+        """self.api = {
             'baseUrl': 'http://127.0.0.1',
             'actions': {
                 'setupRace': '/setup-race',
                 'updateRaceStatus': '/race-status',
                 'updateTeams': '/teams'
             }
-        }
+        }"""
+
+        # Those fields are only used by the simulator
+        # We put them here in order to create a default config
+        # that works with the two apps
+        self.fileUpdateRate = 1
+        self.raceLength = 1
+        self.teams = []
 
     
     @classmethod
@@ -54,24 +57,19 @@ class Config(dict):
             :rtype: Config
         """
         try:
-            validate(instance=jsonConfig, schema=CONFIG_SCHEMA)
-        except Exception as e:
-            print(e)
+            jsonschema.validate(instance=jsonConfig, schema=CONFIG_SCHEMA)
+        except jsonschema.exceptions.ValidationError as e:
+            path = e.absolute_path
+            if path:
+                print('Config validator error for field "%s" : %s (%s=%s)' % (path.pop(), e.message, e.validator, e.validator_value))
+            else:
+                print('Config validator error :', e.message)
             return None
 
         config = Config()
         config.raceName = jsonConfig['raceName']
 
-        config.raceLength = jsonConfig['raceLength']
         config.tickStep = int(jsonConfig['tickStep'])
-
-        timestamp = jsonConfig['startTime']
-        try:
-            datetime.fromtimestamp(timestamp)
-            config.startTime = timestamp
-        except Exception:
-            print('Race start time must be a valid timestamp')
-            return None
         
         config.checkpoints = jsonConfig['checkpoints']
 
@@ -99,19 +97,7 @@ class Config(dict):
         else:
             print('The given simPath does not exist or is not a jar file')
             return None
-        
-        teams = jsonConfig['teams']
-        bibs = []
 
-        for team in teams:
-            bib = team['bibNumber']
-            if bib in bibs:
-                print('Bib number must be unique')
-                return None
-            
-            bibs.append(bib)
-        
-        config.teams = teams
-        config.api = jsonConfig['api']
+        #config.api = jsonConfig['api']
         
         return config

@@ -1,0 +1,14 @@
+payload:
+    bibNumber: Numéro de dossard de l'équipe
+        type: Integer
+
+    oldRank: Ancien rang de l'équipe
+        type: Integer
+
+    rank: Rang actuel de l'équipe
+        type: Integer
+    
+    teams: Liste des équipes dépassées (numéros de dossard)
+        type: Array
+        items:
+            type: Integer
