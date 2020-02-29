@@ -1,3 +1,5 @@
+id: 1
+
 payload:
     race: Nom de la course
         type: String

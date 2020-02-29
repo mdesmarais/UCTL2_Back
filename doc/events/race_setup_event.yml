@@ -1,3 +1,5 @@
+id: 0
+
 payload:
     checkpoints: Liste des spéciales de la course
         type: Array

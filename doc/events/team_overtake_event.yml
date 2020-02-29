@@ -1,3 +1,5 @@
+id: 5
+
 payload:
     bibNumber: Numéro de dossard de l'équipe
         type: Integer
