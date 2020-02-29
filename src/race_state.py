@@ -181,7 +181,7 @@ def readRaceStateFromFile(filePath, config, loopTime, lastState):
     raceState = None
 
     try:
-        with open(config['raceFile'], 'r') as raceFile:
+        with open(config['raceFile'], 'r', encoding=config['encoding']) as raceFile:
             reader = csv.DictReader(raceFile, delimiter='\t')
             raceState = readRaceState(reader, config, loopTime, lastState)
     except IOError as e:
@@ -216,8 +216,7 @@ async def readRaceStateFromUrl(filePath, config, loopTime, lastState, session, u
 
     try:
         async with session.get(url) as r:
-            #content = await r.text(encoding='iso8859_3')
-            content = await r.text()
+            content = await r.text(encoding=config['encoding'])
             print('file downloaded')
         reader = csv.DictReader(content.split('\n'), delimiter='\t')
 

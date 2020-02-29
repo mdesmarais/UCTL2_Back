@@ -26,6 +26,7 @@ class Config(dict):
         self.raceFile = 'not set'
         self.routeFile = 'not set'
         self.simPath = 'not set'
+        self.encoding = 'utf-8'
         """self.api = {
             'baseUrl': 'http://127.0.0.1',
             'actions': {
@@ -99,5 +100,7 @@ class Config(dict):
             return None
 
         #config.api = jsonConfig['api']
+
+        config.encoding = jsonConfig['encoding']
         
         return config

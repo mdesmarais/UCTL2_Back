@@ -3,7 +3,7 @@ CONFIG_SCHEMA = {
     'type': 'object',
     'required': [
         'raceName', 'routeFile', 'raceFile', 'simPath', 'checkpoints', 
-        'tickStep', 'fileUpdateRate', 'raceLength', 'teams'
+        'tickStep', 'fileUpdateRate', 'raceLength', 'teams', 'encoding'
     ],
     'properties': {
         'raceName': {
@@ -69,6 +69,10 @@ CONFIG_SCHEMA = {
                     }
                 }
             }
+        },
+        'encoding': {
+            'title': 'Encodage du fichier de course (utf-8, iso8859_3, ...)',
+            'type': 'string'
         }
     }
 }
