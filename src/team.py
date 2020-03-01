@@ -51,7 +51,7 @@ class Team:
             'name': self.name,
             'rank': self.rank,
             'oldRank': self.oldRank,
-            'currentStage': self.currentStage,
+            'currentStage': self.currentStage if self.currentStage >= 0 else 0,
             'coveredDistance': self.coveredDistance,
             'progression': self.progression,
             'pace': self.pace,
