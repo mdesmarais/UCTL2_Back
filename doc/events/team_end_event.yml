@@ -1,16 +1,21 @@
 id: 4
 
+description: Evènement envoyé lorsqu'une équipe termine la course
+
 payload:
     averagePace: Allure moyenne pour la dernière spéciale (nombre de secondes pour 1000m)
         type: Integer
     
     bibNumber: Numéro de dossard de l'équipe
         type: Integer
-    
-    currentCheckpoint: Numéro de la spéciale courante
+
+    coveredDistance: Distance parcourue par l'équipe (en mètres)
         type: Integer
     
-    lastCheckpoint: Numéro de la spéciale que vient de terminer l'équipe
+    currentStage: Indice de la spéciale courante
+        type: Integer
+    
+    lastStage: Indice de la spéciale que vient de terminer l'équipe
         type: Integer
     
     splitTime: Temps en secondes pour terminer la dernière spéciale

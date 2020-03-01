@@ -1,12 +1,7 @@
 id: 0
+description: Initialisation de la course avec les informations utiles pour le front. Event envoyé une seule fois par client
 
 payload:
-    checkpoints: Liste des spéciales de la course
-        type: Array
-        items:
-            item0: Position dans la course en mètres
-            item1: Longueur de la spéciale
-
     distance: Longueur de la course en mètres
         type: Integer
 
@@ -23,6 +18,20 @@ payload:
                 item1: Longitude
                     type: Number
     
+    stages: Liste des spéciales de la course
+        type: Array
+        items:
+            type: Object
+            item:
+                length: Longueur de la spéciale en mètres
+                    type: Integer
+                name: Nom de la spéciale
+                    type: String
+                start: Distance depuis le départ (en mètres)
+                    type: Integer
+                timed: Indique si la spéciale est chronométrée ou non
+                    type: Boolean
+
     startTime: Timestamp représentant l'heure de départ de la course
         type: Timestamp
     
@@ -38,7 +47,7 @@ payload:
                     type: Integer
                 coveredDistance: Distance parcourue en mètres
                     type: Integer
-                currentCheckpoint: Numéro de la spéciale courante (commence à 0)
+                currentStage: Indice de la spéciale courante (commence à 0)
                     type: Integer
                 name: Nom de l'équipes
                     type: String
