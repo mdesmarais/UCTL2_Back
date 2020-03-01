@@ -2,8 +2,8 @@
 CONFIG_SCHEMA = {
     'type': 'object',
     'required': [
-        'raceName', 'routeFile', 'raceFile', 'simPath', 'checkpoints', 
-        'tickStep', 'fileUpdateRate', 'raceLength', 'teams', 'encoding'
+        'raceName', 'routeFile', 'raceFile', 'simPath', 'stages', 
+        'tickStep', 'fileUpdateRate', 'teams', 'encoding'
     ],
     'properties': {
         'raceName': {
@@ -23,12 +23,28 @@ CONFIG_SCHEMA = {
             'title': 'Chemin vers le fichier jar du simulateur',
             'type': 'string'
         },
-        'checkpoints': {
-            'title': 'Liste de checkpoints (rangés dans l\'ordre croissant des distances',
+        'stage': {
+            'title': 'Liste des spéciales de la course',
             'type': 'array',
+            'minItems': 1,
             'items': {
-                'title': 'Distance en mètres depuis le départ de la course (doit être unique)',
-                'type': 'integer'
+                'type': 'object',
+                'required': ['name', 'length', 'timed'],
+                'properties': {
+                    'name': {
+                        'title': 'Nom de la spéciale (peut être vide)',
+                        'type': 'string'
+                    },
+                    'length': {
+                        'title': 'Longueur de la spéciale en mètres',
+                        'type': 'integer',
+                        'minimum': 1
+                    },
+                    'timed': {
+                        'title': 'true si la spéciale est chronométrée, false si non',
+                        'type': 'boolean'
+                    }
+                }
             }
         },
         'tickStep': {
@@ -38,11 +54,6 @@ CONFIG_SCHEMA = {
         'fileUpdateRate': {
             'title': 'Intervalle de mise à jour du fichier de course par le simulateur (en secondes)',
             'type': 'integer'
-        },
-        'raceLength': {
-            'title': 'Longueur de la course en mètres',
-            'type': 'integer',
-            'minimum': 1
         },
         'teams': {
             'title': 'Liste des équipes engagées (1 minimum)',

@@ -7,7 +7,7 @@ class Team:
         self.bibNumber = bib
         self.name = name
         self.oldRank = 0
-        self.currentCheckpoint = 0
+        self.currentStage = 0
         self.progression = 0
         self.pace = 400
 
@@ -51,7 +51,7 @@ class Team:
             'name': self.name,
             'rank': self.rank,
             'oldRank': self.oldRank,
-            'currentCheckpoint': self.currentCheckpoint,
+            'currentStage': self.currentStage,
             'coveredDistance': self.coveredDistance,
             'progression': self.progression,
             'pace': self.pace,

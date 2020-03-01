@@ -18,34 +18,24 @@ class TeamState:
         self.name = name
         self.lastState = lastState
 
-        self._currentCheckpoint = -1
+        self._currentStage = -1
         self._rank = 0
-        self._coveredDistance = 0 if lastState is None else lastState.coveredDistance
 
+        self.coveredDistance = 0 if lastState is None else lastState.coveredDistance
         self.intermediateTimes = []
         self.splitTimes = []
 
-        self.coveredDistanceChanged = False
-        self.currentCheckpointChanged = False
+        self.currentStageChanged = False
         self.rankChanged = False
 
     @property
-    def coveredDistance(self):
-        return self._coveredDistance
-
-    @coveredDistance.setter
-    @stateProperty('coveredDistance', 'coveredDistanceChanged')
-    def coveredDistance(self, coveredDistance):
-        self._coveredDistance = coveredDistance
-
-    @property
-    def currentCheckpoint(self):
-        return self._currentCheckpoint
+    def currentStage(self):
+        return self._currentStage
     
-    @currentCheckpoint.setter
-    @stateProperty('currentCheckpoint', 'currentCheckpointChanged')
-    def currentCheckpoint(self, currentCheckpoint):
-        self._currentCheckpoint = currentCheckpoint
+    @currentStage.setter
+    @stateProperty('currentStage', 'currentStageChanged')
+    def currentStage(self, currentStage):
+        self._currentStage = currentStage
 
     @property
     def rank(self):

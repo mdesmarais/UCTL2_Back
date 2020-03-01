@@ -23,6 +23,29 @@ def computeCheckpointsNumber(record):
     return len(readSplitTimes(record))
 
 
+def getFloat(container, key):
+    """
+        Extracts a float from a dict with the given key
+
+        If the key does not exist or the associated value
+        is not a float then None is returned.
+
+        :param container: a dict that may contains the key
+        :ptype container: dict
+        :param key: the key
+        :ptype key: any
+        :return: a float value associated to the given key or None
+        :rtype: float
+    """
+    if key in container:
+        try:
+            return float(container[key])
+        except ValueError:
+            return None
+    
+    return None  
+
+
 def getInt(container, key):
     """
         Extracts an int from a dict with the given key

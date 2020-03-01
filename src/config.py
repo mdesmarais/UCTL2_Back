@@ -22,7 +22,7 @@ class Config(dict):
 
         self.raceName = 'Unknown'
         self.tickStep = 0
-        self.checkpoints = []
+        self.stages = []
         self.raceFile = 'not set'
         self.routeFile = 'not set'
         self.simPath = 'not set'
@@ -72,7 +72,15 @@ class Config(dict):
 
         config.tickStep = int(jsonConfig['tickStep'])
         
-        config.checkpoints = jsonConfig['checkpoints']
+        config.stages = jsonConfig['stages']
+
+        for i, stage in enumerate(config.stages):
+            if i == 0:
+                stage['start'] = 0
+            else:
+                lastStage = config.stages[i - 1]
+
+                stage['start'] = lastStage['start'] + lastStage['length']
 
         routeFile = jsonConfig['routeFile']
         if routeFile.endswith('.gpx') or routeFile.endswith('.json'):

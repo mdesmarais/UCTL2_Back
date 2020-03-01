@@ -27,12 +27,6 @@ async def broadcastRace(race, config, session):
     firstLoop = True
     raceFile = config['raceFile']
 
-    #baseUrl = config['api']['baseUrl']
-    #updateRaceStatus = config['api']['actions']['updateRaceStatus']
-    #updateTeams = config['api']['actions']['updateTeams']
-
-    #retreiveFileUrl = urllib.parse.urljoin(baseUrl, config['api']['actions']['retreiveFile'])
-
     while True:
         loopTime = int(time.time() - currentTime)
         currentTime = time.time()
@@ -79,25 +73,25 @@ async def broadcastRace(race, config, session):
             team = race.teams[teamState.bibNumber]
             race.updateTeam(team, teamState)
 
-            if teamState.currentCheckpointChanged:
-                if team.currentCheckpoint == state.checkpointsNumber:
+            if teamState.currentStageChanged:
+                if team.currentStage == state.stagesNumber:
                     id = events.TEAM_END
                 else:
                     id = events.TEAM_CHECKPOINT
                 
-                team.pace = teamState.intermediateTimes[team.currentCheckpoint] * 1000 / team.coveredDistance
+                team.pace = teamState.intermediateTimes[team.currentStage] * 1000 / team.coveredDistance
 
-                lastSplitTime = teamState.splitTimes[team.currentCheckpoint]
+                lastSplitTime = teamState.splitTimes[team.currentStage]
                 # Pace computation : Xs * 1000m / segment distance (in meters)
-                averagePace = lastSplitTime * 1000 / race.checkpoints[team.currentCheckpoint][1]
+                averagePace = lastSplitTime * 1000 / race.stages[team.currentStage]['length']
 
                 notifier.broadcastEventLater(id, {
                     'bibNumber': teamState.bibNumber,
-                    'currentCheckpoint': team.currentCheckpoint + 1,
-                    'lastCheckpoint': team.currentCheckpoint,
+                    'currentStage': team.currentStage + 1,
+                    'lastStage': team.currentStage,
                     'splitTime': lastSplitTime,
                     'averagePace': averagePace,
-                    'coveredDistance': race.checkpoints[team.currentCheckpoint][1],
+                    'coveredDistance': team.coveredDistance,
                     'pos': team.pos
                 })
             

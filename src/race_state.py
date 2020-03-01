@@ -27,7 +27,7 @@ class RaceState:
 
     def __init__(self, lastState=None):
         self.lastStatus = RaceStatus.UNKNOWN
-        self.checkpointsNumber = 0
+        self.stagesNumber = 0
         self.distance = 0 if lastState is None else lastState.distance
         self.teams = []
 
@@ -72,18 +72,21 @@ def readRaceState(reader, config, loopTime, lastState):
 
     raceState = RaceState(lastState)
 
-    totalCheckpointsNumber = 0
-    checkpointsRead = 0
+    totalStagesNumber = 0
+    stagesRead = 0
 
     raceStarted = True
     raceFinished = True
 
     for index, record in enumerate(reader):
         if lastState is None:
-            totalCheckpointsNumber = race_file.computeCheckpointsNumber(record)
-            raceState.distance = race_file.getInt(record, race_file.DISTANCE_FORMAT)
+            totalStagesNumber = race_file.computeCheckpointsNumber(record)
+            raceState.distance = race_file.getFloat(record, race_file.DISTANCE_FORMAT)
 
-        raceState.checkpointsNumber = totalCheckpointsNumber - 1
+            if raceState.distance is None:
+                logger.error('Could not get race length')
+
+        raceState.stagesNumber = totalStagesNumber - 1
 
         teamStarted = not record[race_file.START_FORMAT] == race_file.EMPTY_VALUE_FORMAT
         teamFinished = not record[race_file.FINISH_FORMAT] == race_file.EMPTY_VALUE_FORMAT
@@ -101,25 +104,24 @@ def readRaceState(reader, config, loopTime, lastState):
         
         intermediateTimes = race_file.readIntermediateTimes(record)
         splitTimes = race_file.readSplitTimes(record)
-        checkpointsRead += len(splitTimes)
-        currentCheckpoint = 0
+        stagesRead += len(splitTimes)
+        currentStage = -1
 
         stepDistance = 0
 
         if len(splitTimes) > 0:
-            currentCheckpoint = len(splitTimes) - 1 if len(splitTimes) > 0 else 0
-            lastSection = len(intermediateTimes) - 1 if len(intermediateTimes) > 0 else 0
+            currentStage = len(splitTimes) - 1
 
-            checkpointDistanceFromStart = config['checkpoints'][currentCheckpoint] if len(splitTimes) > 0 else 0
+            stageDistanceFromStart = config['stages'][currentStage]['start']
 
-            if checkpointDistanceFromStart is None:
-                logger.error('Could not compute checkpoint distance from start (id=%d) for team %d', currentCheckpoint, bibNumber)
+            if stageDistanceFromStart is None:
+                logger.error('Could not compute checkpoint distance from start (id=%d) for team %d', currentStage, bibNumber)
                 continue
 
             # Computing some estimations : covered distance since the last loop (step distance)
-            if  checkpointDistanceFromStart > 0:
-                if intermediateTimes[lastSection] > 0:
-                    averageSpeed = checkpointDistanceFromStart / intermediateTimes[lastSection]
+            if  stageDistanceFromStart > 0:
+                if intermediateTimes[currentStage] > 0:
+                    averageSpeed = stageDistanceFromStart / intermediateTimes[currentStage]
                 stepDistance = averageSpeed * loopTime * config['tickStep']
         else:
             # Default pace when we don't known each team's pace yet
@@ -136,14 +138,12 @@ def readRaceState(reader, config, loopTime, lastState):
         # Creates a new team state for each team in the file
         # The name of the team if set if the column TEAM_NAME_FORMAT
         teamState = TeamState(bibNumber, record[race_file.TEAM_NAME_FORMAT], lastTeamState)
-        teamState.currentCheckpoint = currentCheckpoint if not teamFinished else raceState.checkpointsNumber
+        teamState.currentStage = currentStage if not teamFinished else raceState.stagesNumber
         teamState.intermediateTimes = intermediateTimes
         teamState.splitTimes = splitTimes
 
-        if teamFinished:
-            teamState.coveredDistance = raceState.distance * 1000
-        elif teamState.currentCheckpointChanged:
-            teamState.coveredDistance = checkpointDistanceFromStart
+        if teamFinished or teamState.currentStageChanged:
+            teamState.coveredDistance = stageDistanceFromStart + config['stages'][currentStage]['length']
         else:
             teamState.coveredDistance += stepDistance
 
