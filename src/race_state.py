@@ -99,30 +99,30 @@ def readRaceState(reader, config, loopTime, lastState):
             logger.error('Bib number error')
             continue
         
+        intermediateTimes = race_file.readIntermediateTimes(record)
         splitTimes = race_file.readSplitTimes(record)
         checkpointsRead += len(splitTimes)
-        currentCheckpoint = -1
+        currentCheckpoint = 0
 
-        pace = 0
         stepDistance = 0
 
         if len(splitTimes) > 0:
             currentCheckpoint = len(splitTimes) - 1 if len(splitTimes) > 0 else 0
+            lastSection = len(intermediateTimes) - 1 if len(intermediateTimes) > 0 else 0
+
             checkpointDistanceFromStart = config['checkpoints'][currentCheckpoint] if len(splitTimes) > 0 else 0
 
             if checkpointDistanceFromStart is None:
                 logger.error('Could not compute checkpoint distance from start (id=%d) for team %d', currentCheckpoint, bibNumber)
                 continue
 
-            # Computing some estimations : average pace, covered distance since the last loop (step distance)
+            # Computing some estimations : covered distance since the last loop (step distance)
             if  checkpointDistanceFromStart > 0:
-                pace = splitTimes[currentCheckpoint] * 1000 / checkpointDistanceFromStart
-                if splitTimes[currentCheckpoint] > 0:
-                    averageSpeed = checkpointDistanceFromStart / splitTimes[currentCheckpoint]
+                if intermediateTimes[lastSection] > 0:
+                    averageSpeed = checkpointDistanceFromStart / intermediateTimes[lastSection]
                 stepDistance = averageSpeed * loopTime * config['tickStep']
         else:
             # Default pace when we don't known each team's pace yet
-            pace = 400
             stepDistance = 2.5 * loopTime * config['tickStep']
 
         try:
@@ -137,7 +137,7 @@ def readRaceState(reader, config, loopTime, lastState):
         # The name of the team if set if the column TEAM_NAME_FORMAT
         teamState = TeamState(bibNumber, record[race_file.TEAM_NAME_FORMAT], lastTeamState)
         teamState.currentCheckpoint = currentCheckpoint if not teamFinished else raceState.checkpointsNumber
-        teamState.pace = pace
+        teamState.intermediateTimes = intermediateTimes
         teamState.splitTimes = splitTimes
 
         if teamFinished:

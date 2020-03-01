@@ -2,6 +2,7 @@
 BIB_NUMBER_FORMAT = 'Numéro'
 TEAM_NAME_FORMAT = 'Nom'
 CHECKPOINT_NAME_FORMAT = 'Interm (S%d)'
+END_SECTION_FORMAT = '3%d|1'
 DISTANCE_FORMAT = 'Distance'
 START_FORMAT = 'Start'
 FINISH_FORMAT = 'Finish'
@@ -43,6 +44,28 @@ def getInt(container, key):
             return None
     
     return None
+
+
+def readIntermediateTimes(record):
+    intermediateTimes = []
+
+    i = 1
+    while True:
+        columnName = END_SECTION_FORMAT % (i, )
+
+        value = getInt(record, columnName)
+
+        if value is None:
+            break
+
+        if value > 0:
+            intermediateTimes.append(value)
+            i += 1
+        else:
+            # No more split times for this team
+            break
+    
+    return intermediateTimes
 
 
 def readSplitTimes(record):

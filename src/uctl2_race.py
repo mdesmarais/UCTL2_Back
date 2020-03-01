@@ -84,6 +84,8 @@ async def broadcastRace(race, config, session):
                     id = events.TEAM_END
                 else:
                     id = events.TEAM_CHECKPOINT
+                
+                team.pace = teamState.intermediateTimes[team.currentCheckpoint] * 1000 / team.coveredDistance
 
                 lastSplitTime = teamState.splitTimes[team.currentCheckpoint]
                 # Pace computation : Xs * 1000m / segment distance (in meters)
@@ -94,7 +96,9 @@ async def broadcastRace(race, config, session):
                     'currentCheckpoint': team.currentCheckpoint + 1,
                     'lastCheckpoint': team.currentCheckpoint,
                     'splitTime': lastSplitTime,
-                    'averagePace': averagePace
+                    'averagePace': averagePace,
+                    'coveredDistance': race.checkpoints[team.currentCheckpoint][1],
+                    'pos': team.pos
                 })
             
             if teamState.rankChanged and team.rank < team.oldRank:
@@ -103,13 +107,6 @@ async def broadcastRace(race, config, session):
                     'oldRank': team.oldRank,
                     'rank': team.rank,
                     'teams': computeOvertakenTeams(team, race.teams)
-                })
-
-            if teamState.currentCheckpointChanged or teamState.coveredDistanceChanged:
-                notifier.broadcastEventLater(events.TEAM_MOVE, {
-                    'bibNumber': team.bibNumber,
-                    'pos': team.pos,
-                    'progression': team.progression
                 })
         
         tasks.append(asyncio.ensure_future(notifier.broadcastEvents()))

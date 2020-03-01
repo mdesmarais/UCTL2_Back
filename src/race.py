@@ -32,6 +32,5 @@ class Race:
 
     def updateTeam(self, team, state):
         team.coveredDistance = state.coveredDistance
-        team.pace = state.pace
         team.rank = state.rank
         team.currentCheckpoint = state.currentCheckpoint
