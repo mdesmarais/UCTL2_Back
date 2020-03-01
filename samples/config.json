@@ -1,0 +1,48 @@
+{
+  "raceName": "Univercity Trail 2020",
+  "tickStep": 60,
+  "stages": [
+    {
+      "name": "Campus de Villejean",
+      "length": 2100,
+      "timed": true
+    },
+    {
+      "name": "Transition 1",
+      "length": 1400,
+      "timed": false
+    },
+    {
+      "name": "Pairies / Coulée verte",
+      "length": 5900,
+      "timed": true
+    },
+    {
+      "name": "Transition 2",
+      "length": 1500,
+      "timed": false
+    },
+    {
+      "name": "Campus de Beaulieu",
+      "length": 2000,
+      "timed": true
+    }
+  ],
+  "raceFile": "race.csv",
+  "encoding": "utf-8",
+  "routeFile": "samples/uctl2.gpx",
+  "simPath": "UCTL2.jar",
+  "fileUpdateRate": 1,
+  "teams": [
+    {
+      "bibNumber": 1,
+      "name": "ISTIC",
+      "pace": 300
+    },
+    {
+      "bibNumber": 2,
+      "name": "INSA",
+      "pace": 290
+    }
+  ]
+}
