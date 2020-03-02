@@ -24,13 +24,15 @@ class Team:
         self._coveredDistance = coveredDistance
         self.progression = coveredDistance / self.race.distance
 
-        i = 0
         # racePoint = (lat, lon, alt, distance from start)
         # plainRacePoint = (lat, lon)
-        while i < len(self.race.racePoints) and self.race.racePoints[i][3] < coveredDistance:
-            i += 1
+        i = sum(len(self.race.racePoints[i]) for i in range(self.currentStage))
+        currentStagePoints = self.race.racePoints[self.currentStage]
+        j = 0
+        while j < len(currentStagePoints) and currentStagePoints[j][3] < coveredDistance:
+            j += 1
         
-        self._pos = self.race.plainRacePoints[i]
+        self._pos = self.race.plainRacePoints[i + j]
 
     @property
     def pos(self):

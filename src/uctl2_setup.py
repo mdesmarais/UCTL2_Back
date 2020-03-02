@@ -57,7 +57,7 @@ def extractTrackPoints(gpxFile):
     for track in gpxFile.tracks:
         for segment in track.segments:
             for point in segment.points:
-                points.append((point.latitude, point.longitude, point.elevation))
+                points.append((point.latitude, point.longitude, point.elevation if point.elevation else 0))
     
     return points
 
@@ -131,7 +131,27 @@ def readRace(config):
     if points is False:
         return False
 
-    return Race(config['raceName'], computeDistances(points), config['stages'])
+    racePoints = computeDistances(points)
+    racePointsWithStages = []
+    d = 0
+    lastRacePoint = 0
+
+    # Race points are grouped by their stage
+    for stage in config['stages']:
+        d = stage['start'] + stage['length']
+        stagePoints = []
+
+        # rp = (lat, lon, alt, distance from start)
+        for i, rp in enumerate(racePoints[lastRacePoint:]):
+            if rp[3] <= d:
+                stagePoints.append(rp)
+            else:
+                lastRacePoint += i - 1
+                break
+
+        racePointsWithStages.append(stagePoints)
+
+    return Race(config['raceName'], racePointsWithStages, config['stages'])
 
 
 def sendRace(race, baseUrl, action):

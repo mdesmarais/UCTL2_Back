@@ -8,15 +8,21 @@ payload:
     name: Nom de la course
         type: String
 
-    racePoints: Liste de coordonnées GPS représentant le parcours
+    racePoints: Liste de coordonnées GPS représentant le parcours, regroupées en spéciales
         type: Array
-        items:
+        items: Tableau contenant autant d'éléments que de spéciales
             type: Array
-            item:
-                item0: Latitude
-                    type: Number
-                item1: Longitude
-                    type: Number
+            items: Liste de coordonnées GPS
+                type: Array
+                item: Coordoonée GPS
+                    item0: Latitude
+                        type: Number
+                    item1: Longitude
+                        type: Number
+                    item2: Altitude
+                        type: Number
+                    item3: Distance depuis le départ en mètres
+                        type: Number
     
     stages: Liste des spéciales de la course
         type: Array

@@ -10,7 +10,7 @@ class Race:
         self.name = name
         self.distance = 0
         self.racePoints = racePoints
-        self.plainRacePoints = list((p[0], p[1]) for p in racePoints)
+        self.plainRacePoints = [(item[0], item[1]) for sublist in self.racePoints for item in sublist]
         self.status = RaceStatus.WAITING
         self.startTime = 0
         self.teams = {}
@@ -24,7 +24,7 @@ class Race:
             'name': self.name,
             'distance': self.distance,
             'stages': self.stages,
-            'racePoints': self.plainRacePoints,
+            'racePoints': self.racePoints,
             'startTime': self.startTime,
             'teams': list(team.toJSON() for team in self.teams.values()),
             'status': self.status
