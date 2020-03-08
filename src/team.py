@@ -7,11 +7,16 @@ class Team:
         self.bibNumber = bib
         self.name = name
         self.oldRank = 0
+
+        # Index of the current stage
         self.currentStage = 0
-        self.progression = 0
+
+        # Index of the current time (split time, intermediate time)
+        self.currentTimeIndex = -1
         self.pace = 400
 
         self._coveredDistance = 0
+        self._progression = 0
         self._pos = self.race.plainRacePoints[0]
         self._rank = 0
 
@@ -22,13 +27,22 @@ class Team:
     @coveredDistance.setter
     def coveredDistance(self, coveredDistance):
         self._coveredDistance = coveredDistance
-        self.progression = coveredDistance / self.race.distance
+        self._progression = coveredDistance / self.race.distance
 
         # racePoint = (lat, lon, alt, distance from start)
         # plainRacePoint = (lat, lon)
-        i = sum(len(self.race.racePoints[i]) for i in range(self.currentStage))
+
+        # Computes number of racePoints from previous stages
+        # If the team is in the first stage, then i equals 0
+        if self.currentStage > 0:
+            i = sum(len(self.race.racePoints[k]) for k in range(self.currentStage))
+        else:
+            i = 0
+
         currentStagePoints = self.race.racePoints[self.currentStage]
         j = 0
+
+        # Counts the number of racePoints where the team has already been
         while j < len(currentStagePoints) and currentStagePoints[j][3] < coveredDistance:
             j += 1
         
@@ -37,6 +51,10 @@ class Team:
     @property
     def pos(self):
         return self._pos
+
+    @property
+    def progression(self):
+        return self._progression
 
     @property
     def rank(self):

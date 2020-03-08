@@ -1,3 +1,4 @@
+import datetime
 import csv
 import logging
 
@@ -105,27 +106,9 @@ def readRaceState(reader, config, loopTime, lastState):
         intermediateTimes = race_file.readIntermediateTimes(record)
         splitTimes = race_file.readSplitTimes(record)
         stagesRead += len(splitTimes)
-        currentStage = -1
-
-        stepDistance = 0
-
-        if len(splitTimes) > 0:
-            currentStage = len(splitTimes) - 1
-
-            stageDistanceFromStart = config['stages'][currentStage]['start']
-
-            if stageDistanceFromStart is None:
-                logger.error('Could not compute checkpoint distance from start (id=%d) for team %d', currentStage, bibNumber)
-                continue
-
-            # Computing some estimations : covered distance since the last loop (step distance)
-            if  stageDistanceFromStart > 0:
-                if intermediateTimes[currentStage] > 0:
-                    averageSpeed = stageDistanceFromStart / intermediateTimes[currentStage]
-                stepDistance = averageSpeed * loopTime * config['tickStep']
-        else:
-            # Default pace when we don't known each team's pace yet
-            stepDistance = 2.5 * loopTime * config['tickStep']
+        currentStage = len(splitTimes)
+        currentTimeIndex = currentStage - 1
+        startTime = race_file.readTime(record, race_file.START_FORMAT) if teamStarted else None
 
         try:
             if lastState is not None:
@@ -138,14 +121,30 @@ def readRaceState(reader, config, loopTime, lastState):
         # Creates a new team state for each team in the file
         # The name of the team if set if the column TEAM_NAME_FORMAT
         teamState = TeamState(bibNumber, record[race_file.TEAM_NAME_FORMAT], lastTeamState)
-        teamState.currentStage = currentStage if not teamFinished else raceState.stagesNumber
+        teamState.currentTimeIndex = currentTimeIndex
+        teamState.currentStage = raceState.stagesNumber if teamFinished else currentStage
         teamState.intermediateTimes = intermediateTimes
         teamState.splitTimes = splitTimes
+        teamState.startTime = startTime
 
-        if teamFinished or teamState.currentStageChanged:
-            teamState.coveredDistance = stageDistanceFromStart + config['stages'][currentStage]['length']
+        if len(splitTimes) > 0:
+            # Computing the covered distance since the last loop (step distance)
+            if teamFinished:
+                lastStage = config['stages'][currentStage - 1]
+                teamState.coveredDistance = lastStage['start'] + lastStage['length']
+            elif teamState.currentStageChanged:
+                teamState.coveredDistance = config['stages'][currentStage]['start']
+            else:
+                stageDistanceFromStart = config['stages'][currentStage]['start']
+
+                if stageDistanceFromStart > 0:
+                    if splitTimes[currentTimeIndex] > 0:
+                        elapsedTime = intermediateTimes[currentTimeIndex] - startTime
+                        averageSpeed = stageDistanceFromStart / elapsedTime.total_seconds()
+                    teamState.coveredDistance += averageSpeed * loopTime * config['tickStep']
         else:
-            teamState.coveredDistance += stepDistance
+            # Default pace when we don't known each team's pace yet
+            teamState.coveredDistance += 2.5 * loopTime * config['tickStep']
 
         raceState.teams.append(teamState)
 

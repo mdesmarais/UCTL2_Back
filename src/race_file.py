@@ -1,3 +1,4 @@
+import datetime
 
 BIB_NUMBER_FORMAT = 'Numéro'
 TEAM_NAME_FORMAT = 'Nom'
@@ -76,17 +77,14 @@ def readIntermediateTimes(record):
     while True:
         columnName = END_SECTION_FORMAT % (i, )
 
-        value = getInt(record, columnName)
-
-        if value is None:
+        if not columnName in record or record[columnName] == EMPTY_VALUE_FORMAT:
             break
 
-        if value > 0:
-            intermediateTimes.append(value)
-            i += 1
-        else:
-            # No more split times for this team
-            break
+        date = datetime.date.today()
+        time = datetime.datetime.strptime(record[columnName], '%H:%M:%S').replace(year=date.year, month=date.month, day=date.day)
+
+        intermediateTimes.append(time)
+        i += 1
     
     return intermediateTimes
 
@@ -110,16 +108,18 @@ def readSplitTimes(record):
         checkpointName = CHECKPOINT_NAME_FORMAT % (i, )
         
         # Split times should be in the following format : HH:mm:ss
-        value = getInt(record, checkpointName)
-        """if not segmentName in record:
+        if not checkpointName in record or record[checkpointName] == EMPTY_VALUE_FORMAT:
             break
 
-        pouet = record[segmentName].split(':')
-        if len(pouet) == 1:
+        args = record[checkpointName].split(':')
+        if not len(args) == 3:
             break
-        value = int(pouet[0]) * 3600 + int(pouet[1]) * 60 + int(pouet[2])"""
 
-        if value is None:
+        value = int(args[0]) * 3600 + int(args[1]) * 60 + int(args[2])
+        splitTimes.append(value)
+        i += 1
+
+        """if value is None:
             break
 
         if value > 0:
@@ -127,6 +127,11 @@ def readSplitTimes(record):
             i += 1
         else:
             # No more split times for this team
-            break
+            break"""
     
     return splitTimes
+
+
+def readTime(record, column):
+    date = datetime.date.today()
+    return datetime.datetime.strptime(record[column], '%H:%M:%S').replace(year=date.year, month=date.month, day=date.day)

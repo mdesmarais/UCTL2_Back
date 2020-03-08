@@ -21,9 +21,11 @@ class TeamState:
         self._currentStage = -1
         self._rank = 0
 
+        self.startTime = None
         self.coveredDistance = 0 if lastState is None else lastState.coveredDistance
         self.intermediateTimes = []
         self.splitTimes = []
+        self.currentTimeIndex = -1
 
         self.currentStageChanged = False
         self.rankChanged = False
@@ -36,7 +38,7 @@ class TeamState:
     @stateProperty('currentStage', 'currentStageChanged')
     def currentStage(self, currentStage):
         self._currentStage = currentStage
-
+    
     @property
     def rank(self):
         return self._rank

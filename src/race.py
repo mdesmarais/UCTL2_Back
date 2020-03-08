@@ -6,7 +6,7 @@ from team import Team
 
 class Race:
 
-    def __init__(self, name, racePoints, stages):
+    def __init__(self, name, racePoints, stages, tickStep):
         self.name = name
         self.distance = 0
         self.racePoints = racePoints
@@ -15,6 +15,7 @@ class Race:
         self.startTime = 0
         self.teams = {}
         self.stages = stages
+        self.tickStep = tickStep
 
     def addTeam(self, name, bib):
         self.teams[bib] = Team(self, bib, name)
@@ -27,10 +28,12 @@ class Race:
             'racePoints': self.racePoints,
             'startTime': self.startTime,
             'teams': list(team.toJSON() for team in self.teams.values()),
-            'status': self.status
+            'status': self.status,
+            'tickStep': self.tickStep
         }
 
     def updateTeam(self, team, state):
-        team.coveredDistance = state.coveredDistance
         team.rank = state.rank
+        team.currentTimeIndex = state.currentTimeIndex
         team.currentStage = state.currentStage
+        team.coveredDistance = state.coveredDistance

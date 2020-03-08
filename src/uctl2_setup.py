@@ -151,7 +151,7 @@ def readRace(config):
 
         racePointsWithStages.append(stagePoints)
 
-    return Race(config['raceName'], racePointsWithStages, config['stages'])
+    return Race(config['raceName'], racePointsWithStages, config['stages'], config['tickStep'])
 
 
 def sendRace(race, baseUrl, action):

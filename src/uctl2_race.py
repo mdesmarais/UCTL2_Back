@@ -79,16 +79,17 @@ async def broadcastRace(race, config, session):
                 else:
                     id = events.TEAM_CHECKPOINT
                 
-                team.pace = teamState.intermediateTimes[team.currentStage] * 1000 / team.coveredDistance
+                elapsedTime = teamState.intermediateTimes[team.currentTimeIndex] - teamState.startTime
+                team.pace = elapsedTime.total_seconds() * 1000 / team.coveredDistance
 
-                lastSplitTime = teamState.splitTimes[team.currentStage]
+                lastSplitTime = teamState.splitTimes[team.currentTimeIndex]
                 # Pace computation : Xs * 1000m / segment distance (in meters)
-                averagePace = lastSplitTime * 1000 / race.stages[team.currentStage]['length']
+                averagePace = lastSplitTime * 1000 / race.stages[team.currentStage - 1]['length']
 
                 notifier.broadcastEventLater(id, {
                     'bibNumber': teamState.bibNumber,
-                    'currentStage': team.currentStage + 1,
-                    'lastStage': team.currentStage,
+                    'currentStage': team.currentStage,
+                    'lastStage': team.currentStage - 1,
                     'splitTime': lastSplitTime,
                     'averagePace': averagePace,
                     'coveredDistance': team.coveredDistance,
