@@ -136,7 +136,18 @@ def readRaceState(reader, config, loopTime, lastState):
                 lastStage = config['stages'][currentStage - 1]
                 teamState.coveredDistance = lastStage['start'] + lastStage['length']
             elif teamState.currentStageChanged:
+                stageDistanceFromStart = config['stages'][currentStage]['start']
+
                 teamState.coveredDistance = config['stages'][currentStage]['start']
+
+                startTime = race_file.readTime(record, race_file.START_FORMAT)
+                raceTime = (datetime.datetime.now() - startTime) * config['tickStep']
+                raceDateTime = startTime + raceTime
+                timeSinceStageStarted = (raceDateTime - intermediateTimes[currentTimeIndex]).total_seconds()
+                elapsedTime = (intermediateTimes[currentTimeIndex] - startTime)
+                averageSpeed = stageDistanceFromStart / elapsedTime.total_seconds()
+                
+                teamState.coveredDistance = stageDistanceFromStart + averageSpeed * timeSinceStageStarted
             else:
                 stageDistanceFromStart = config['stages'][currentStage]['start']
 
@@ -150,6 +161,7 @@ def readRaceState(reader, config, loopTime, lastState):
             teamState.coveredDistance += 2.5 * loopTime * config['tickStep']
 
         raceState.teams.append(teamState)
+        print(teamState.coveredDistance)
 
     # Updating the status of the race for the current state
     if raceFinished:
