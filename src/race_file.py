@@ -3,6 +3,7 @@ import datetime
 BIB_NUMBER_FORMAT = 'Numéro'
 TEAM_NAME_FORMAT = 'Nom'
 CHECKPOINT_NAME_FORMAT = 'Interm (S%d)'
+STAGE_RANK_FORMAT = 'Clt Interm-1 (S%d)'
 END_SECTION_FORMAT = '3%d|1'
 DISTANCE_FORMAT = 'Distance'
 START_FORMAT = 'Start'
@@ -130,6 +131,22 @@ def readSplitTimes(record):
             break"""
     
     return splitTimes
+
+
+def readStageRanks(record):
+    ranks = []
+
+    i = 1
+    while True:
+        stageRankName = STAGE_RANK_FORMAT % (i, )
+
+        if not stageRankName in record or record[stageRankName] == EMPTY_VALUE_FORMAT:
+            break
+        
+        ranks.append(int(record[stageRankName]))
+        i += 1
+    
+    return ranks
 
 
 def readTime(record, column):

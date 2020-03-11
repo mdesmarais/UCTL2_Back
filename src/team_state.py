@@ -25,6 +25,7 @@ class TeamState:
         self.coveredDistance = 0 if lastState is None else lastState.coveredDistance
         self.intermediateTimes = []
         self.splitTimes = []
+        self.stageRanks = []
         self.currentTimeIndex = -1
 
         self.currentStageChanged = False

@@ -11,6 +11,8 @@ class Team:
         # Index of the current stage
         self.currentStage = 0
 
+        self.stageRanks = []
+
         # Index of the current time (split time, intermediate time)
         self.currentTimeIndex = -1
         self.pace = 400
@@ -49,6 +51,10 @@ class Team:
         self._pos = self.race.plainRacePoints[i + j]
 
     @property
+    def lastStageRank(self):
+        return self.stageRanks[self.currentTimeIndex]
+
+    @property
     def pos(self):
         return self._pos
 
@@ -75,5 +81,6 @@ class Team:
             'coveredDistance': self.coveredDistance,
             'progression': self.progression,
             'pace': self.pace,
-            'pos': self.pos
+            'pos': self.pos,
+            'stageRanks': self.stageRanks
         }

@@ -105,6 +105,8 @@ def readRaceState(reader, config, loopTime, lastState):
         
         intermediateTimes = race_file.readIntermediateTimes(record)
         splitTimes = race_file.readSplitTimes(record)
+        stagesRank = race_file.readStageRanks(record)
+
         stagesRead += len(splitTimes)
         currentStage = len(splitTimes)
         currentTimeIndex = currentStage - 1
@@ -126,6 +128,7 @@ def readRaceState(reader, config, loopTime, lastState):
         teamState.intermediateTimes = intermediateTimes
         teamState.splitTimes = splitTimes
         teamState.startTime = startTime
+        teamState.stageRanks = stagesRank
 
         if len(splitTimes) > 0:
             # Computing the covered distance since the last loop (step distance)

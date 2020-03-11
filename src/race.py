@@ -37,3 +37,4 @@ class Race:
         team.currentTimeIndex = state.currentTimeIndex
         team.currentStage = state.currentStage
         team.coveredDistance = state.coveredDistance
+        team.stageRanks = state.stageRanks

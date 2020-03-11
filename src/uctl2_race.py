@@ -93,7 +93,8 @@ async def broadcastRace(race, config, session):
                     'splitTime': lastSplitTime,
                     'averagePace': averagePace,
                     'coveredDistance': team.coveredDistance,
-                    'pos': team.pos
+                    'pos': team.pos,
+                    'stageRank': team.lastStageRank
                 })
             
             if teamState.rankChanged and team.rank < team.oldRank:
