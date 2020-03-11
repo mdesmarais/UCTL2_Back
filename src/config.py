@@ -22,6 +22,7 @@ class Config(dict):
 
         self.raceName = 'Unknown'
         self.tickStep = 0
+        self.timeCheckpoints = []
         self.stages = []
         self.raceFile = 'not set'
         self.routeFile = 'not set'
@@ -71,7 +72,8 @@ class Config(dict):
         config.raceName = jsonConfig['raceName']
 
         config.tickStep = int(jsonConfig['tickStep'])
-        
+
+        config.timeCheckpoints = jsonConfig['timeCheckpoints']
         config.stages = jsonConfig['stages']
 
         for i, stage in enumerate(config.stages):
