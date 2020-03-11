@@ -1,6 +1,7 @@
 {
   "raceName": "Univercity Trail 2020",
   "tickStep": 60,
+  "timeCheckpoints": [],
   "stages": [
     {
       "name": "Campus de Villejean",
