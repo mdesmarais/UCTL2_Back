@@ -20,3 +20,6 @@ payload:
     
     splitTime: Temps en secondes pour terminer la dernière spéciale
         type: Integer
+    
+    stageRank: Classement de l'équipe pour la spéciale terminée
+        type: Integer

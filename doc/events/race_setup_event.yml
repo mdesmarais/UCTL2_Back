@@ -70,3 +70,9 @@ payload:
                     type: Number
                 rank: Rang actuel de l'équipe
                     type: Integer
+                tickStep: Vitesse de la simulation (nombre de secondes simulées pour 1 seconde réelle). Vaudra 1 dans le cas d'une vraie course
+                    type: Integer
+                stageRanks: Liste des classements de l'équipe pour chaque section terminées
+                    type: Array
+                    items:
+                        type: Integer
