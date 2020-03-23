@@ -22,7 +22,17 @@ def computeCheckpointsNumber(record):
         :return: the number of checkpoints in the given record
         :rtype: int
     """
-    return len(readSplitTimes(record))
+    i = 1
+    # Retreiving all segments Si while Si is a valid key in record
+    while True:
+        checkpointName = CHECKPOINT_NAME_FORMAT % (i, )
+        
+        if checkpointName in record:
+            i += 1
+        else:
+            break
+    
+    return i - 1
 
 
 def getFloat(container, key):

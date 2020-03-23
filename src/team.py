@@ -47,6 +47,9 @@ class Team:
         # Counts the number of racePoints where the team has already been
         while j < len(currentStagePoints) and currentStagePoints[j][3] < coveredDistance:
             j += 1
+
+        if j > 0:
+            j -= 1
         
         self._pos = self.race.plainRacePoints[i + j]
 

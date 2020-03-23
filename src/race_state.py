@@ -28,7 +28,7 @@ class RaceState:
 
     def __init__(self, lastState=None):
         self.lastStatus = RaceStatus.UNKNOWN
-        self.stagesNumber = 0
+        self.stagesNumber = 0 if lastState is None else lastState.stagesNumber
         self.distance = 0 if lastState is None else lastState.distance
         self.teams = []
 
@@ -73,7 +73,6 @@ def readRaceState(reader, config, loopTime, lastState):
 
     raceState = RaceState(lastState)
 
-    totalStagesNumber = 0
     stagesRead = 0
 
     raceStarted = True
@@ -81,13 +80,11 @@ def readRaceState(reader, config, loopTime, lastState):
 
     for index, record in enumerate(reader):
         if lastState is None:
-            totalStagesNumber = race_file.computeCheckpointsNumber(record)
+            raceState.stagesNumber = race_file.computeCheckpointsNumber(record)
             raceState.distance = race_file.getFloat(record, race_file.DISTANCE_FORMAT)
 
             if raceState.distance is None:
                 logger.error('Could not get race length')
-
-        raceState.stagesNumber = totalStagesNumber - 1
 
         teamStarted = not record[race_file.START_FORMAT] == race_file.EMPTY_VALUE_FORMAT
         teamFinished = not record[race_file.FINISH_FORMAT] == race_file.EMPTY_VALUE_FORMAT
@@ -124,7 +121,7 @@ def readRaceState(reader, config, loopTime, lastState):
         # The name of the team if set if the column TEAM_NAME_FORMAT
         teamState = TeamState(bibNumber, record[race_file.TEAM_NAME_FORMAT], lastTeamState)
         teamState.currentTimeIndex = currentTimeIndex
-        teamState.currentStage = raceState.stagesNumber if teamFinished else currentStage
+        teamState.currentStage = raceState.stagesNumber - 1 if teamFinished else currentStage
         teamState.intermediateTimes = intermediateTimes
         teamState.splitTimes = splitTimes
         teamState.startTime = startTime
@@ -161,7 +158,6 @@ def readRaceState(reader, config, loopTime, lastState):
             teamState.coveredDistance += 2.5 * loopTime * config['tickStep']
 
         raceState.teams.append(teamState)
-        print(teamState.coveredDistance)
 
     # Updating the status of the race for the current state
     if raceFinished:
