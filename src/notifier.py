@@ -9,7 +9,7 @@ import events as customEvent
 events = asyncio.Queue(10)
 delayedEvents = []
 
-clients = []
+clients = set()
 stop = asyncio.get_event_loop().create_future()
 race = None
 
@@ -57,18 +57,23 @@ async def broadcaster():
 
         logger.debug(event)
 
-        for client in clients:
+        raw_event = json.dumps(event)
+
+        for client in list(clients):
             try:
-                await client.send(json.dumps(event))
+                await client.send(raw_event)
             except websockets.ConnectionClosed:
                 clients.remove(client)
 
 
 async def consumerHandler(websocket, path):
-    clients.append(websocket)
+    clients.add(websocket)
 
     if race is not None:
-        await broadcastEvent(customEvent.RACE_SETUP, race.toJSON())
+        await websocket.send(json.dumps([{
+            'id': customEvent.RACE_SETUP,
+            'payload': race.toJSON()
+        }]))
 
     # The handler needs to wait the end of the server in order
     # to keep the connection opened

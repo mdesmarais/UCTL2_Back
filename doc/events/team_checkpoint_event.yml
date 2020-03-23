@@ -17,6 +17,13 @@ payload:
     
     lastStage: Indice de la spéciale que vient de terminer l'équipe
         type: Integer
+
+    pos: Coordonnées GPS indiquant la position de l'équipe
+        type: Array
+        items:
+            item:
+                item0: Latitude
+                item1: Longitude
     
     splitTime: Temps en secondes pour terminer la dernière spéciale
         type: Integer

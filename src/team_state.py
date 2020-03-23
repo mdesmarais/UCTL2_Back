@@ -20,6 +20,7 @@ class TeamState:
 
         self._currentStage = -1
         self._rank = 0
+        self._teamFinished = False
 
         self.startTime = None
         self.coveredDistance = 0 if lastState is None else lastState.coveredDistance
@@ -30,6 +31,7 @@ class TeamState:
 
         self.currentStageChanged = False
         self.rankChanged = False
+        self.teamFinishedChanged = False
 
     @property
     def currentStage(self):
@@ -52,3 +54,12 @@ class TeamState:
 
         if b:
             self.rankChanged = False
+    
+    @property
+    def teamFinished(self):
+        return self._teamFinished
+
+    @teamFinished.setter
+    @stateProperty('teamFinished', 'teamFinishedChanged')
+    def teamFinished(self, teamFinished):
+        self._teamFinished = teamFinished

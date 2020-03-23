@@ -15,6 +15,7 @@ class Race:
         self.startTime = 0
         self.teams = {}
         self.stages = stages
+        self.length = sum(stage['length'] for stage in stages if stage['timed'])
         self.tickStep = tickStep
 
     def addTeam(self, name, bib):

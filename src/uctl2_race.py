@@ -74,11 +74,6 @@ async def broadcastRace(race, config, session):
             race.updateTeam(team, teamState)
 
             if teamState.currentStageChanged:
-                if team.currentStage == state.stagesNumber:
-                    id = events.TEAM_END
-                else:
-                    id = events.TEAM_CHECKPOINT
-                
                 elapsedTime = teamState.intermediateTimes[team.currentTimeIndex] - teamState.startTime
                 team.pace = elapsedTime.total_seconds() * 1000 / team.coveredDistance
 
@@ -86,7 +81,7 @@ async def broadcastRace(race, config, session):
                 # Pace computation : Xs * 1000m / segment distance (in meters)
                 averagePace = lastSplitTime * 1000 / race.stages[team.currentStage - 1]['length']
 
-                notifier.broadcastEventLater(id, {
+                notifier.broadcastEventLater(events.TEAM_CHECKPOINT, {
                     'bibNumber': teamState.bibNumber,
                     'currentStage': team.currentStage,
                     'lastStage': team.currentStage - 1,
@@ -95,6 +90,17 @@ async def broadcastRace(race, config, session):
                     'coveredDistance': team.coveredDistance,
                     'pos': team.pos,
                     'stageRank': team.lastStageRank
+                })
+
+            if teamState.teamFinishedChanged:
+                # totalTime = sum of split times for timed stages only
+                totalTime = sum((x for i, x in enumerate(teamState.splitTimes) if race.stages[i]['timed']))
+                averagePace = totalTime * 1000 / race.length
+
+                notifier.broadcastEventLater(events.TEAM_END, {
+                    'bibNumber': teamState.bibNumber,
+                    'totalTime': totalTime,
+                    'averagePace': averagePace
                 })
             
             if teamState.rankChanged and team.rank < team.oldRank:
