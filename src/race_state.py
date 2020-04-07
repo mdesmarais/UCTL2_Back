@@ -73,8 +73,6 @@ def readRaceState(reader, config, loopTime, lastState):
 
     raceState = RaceState(lastState)
 
-    stagesRead = 0
-
     raceStarted = False
     raceFinished = True
 
@@ -86,28 +84,67 @@ def readRaceState(reader, config, loopTime, lastState):
             if raceState.distance is None:
                 logger.error('Could not get race length')
 
-        teamStarted = not record[race_file.START_FORMAT] == race_file.EMPTY_VALUE_FORMAT
-        teamFinished = not record[race_file.FINISH_FORMAT] == race_file.EMPTY_VALUE_FORMAT
+        bibNumber = race_file.getInt(record, race_file.BIB_NUMBER_FORMAT)
+        if bibNumber is None:
+            logger.error('Bib number error')
+            continue
+        
+        splitTimes = race_file.read_split_times(record)
+        stagesRank = race_file.read_stage_ranks(record)
 
+        started_stage_times = race_file.read_stage_start_times(record)
+        ended_stage_times = race_file.read_stage_end_times(record)
+
+        teamStarted = len(started_stage_times) > 0
+        teamFinished = len(ended_stage_times) == raceState.stagesNumber
+
+        # Computes race state based on team state
         if teamStarted:
             raceStarted = True
         
         if not teamFinished:
             raceFinished = False
 
-        bibNumber = race_file.getInt(record, race_file.BIB_NUMBER_FORMAT)
-        if bibNumber is None:
-            logger.error('Bib number error')
-            continue
-        
-        intermediateTimes = race_file.readIntermediateTimes(record)
-        splitTimes = race_file.readSplitTimes(record)
-        stagesRank = race_file.readStageRanks(record)
+        if teamFinished:
+            currentStage = len(config.stages) - 1
+        elif len(ended_stage_times) == 0:
+            currentStage = 0
+        else:
+            i, j = (0, 0)
+            for stage in config.stages:
+                if i >= len(ended_stage_times):
+                    break
 
-        stagesRead += len(splitTimes)
-        currentStage = len(splitTimes)
+                if stage['timed']:
+                    i += 1
+                
+                j += 1
+            
+            currentStage = j if len(started_stage_times) == len(ended_stage_times) else j + 1
+
+        startTime = started_stage_times[0] if teamStarted else None
         currentTimeIndex = currentStage - 1
-        startTime = race_file.readTime(record, race_file.START_FORMAT) if teamStarted else None
+
+        i, j, k = (0, 0, 0)
+        for stage in config.stages:
+            if stage['timed']:
+                i += 1
+                j += 1
+                continue
+
+            if i >= len(started_stage_times):
+                break
+
+            real_i = i
+            split_time = int((started_stage_times[i] - ended_stage_times[i - 1]).total_seconds())
+            splitTimes.insert(i, split_time)
+
+            inter_time = started_stage_times[i]
+            ended_stage_times.insert(i + k, inter_time)
+            stagesRank.insert(i + k, 0)
+            k += 1
+
+            j += 1
 
         try:
             if lastState is not None:
@@ -117,11 +154,14 @@ def readRaceState(reader, config, loopTime, lastState):
         except ValueError:
             lastTeamState = None
 
+        intermediateTimes = list(ended_stage_times)
+        currentTimeIndex = 0 if len(ended_stage_times) == 0 else currentStage - 1
+
         # Creates a new team state for each team in the file
         # The name of the team if set if the column TEAM_NAME_FORMAT
         teamState = TeamState(bibNumber, record[race_file.TEAM_NAME_FORMAT], lastTeamState)
         teamState.currentTimeIndex = currentTimeIndex
-        teamState.currentStage = raceState.stagesNumber - 1 if teamFinished else currentStage
+        teamState.currentStage = currentStage
         teamState.intermediateTimes = intermediateTimes
         teamState.splitTimes = splitTimes
         teamState.startTime = startTime
@@ -138,7 +178,6 @@ def readRaceState(reader, config, loopTime, lastState):
 
                 teamState.coveredDistance = config['stages'][currentStage]['start']
 
-                startTime = race_file.readTime(record, race_file.START_FORMAT)
                 raceTime = (datetime.datetime.now() - startTime) * config['tickStep']
                 raceDateTime = startTime + raceTime
                 timeSinceStageStarted = (raceDateTime - intermediateTimes[currentTimeIndex]).total_seconds()

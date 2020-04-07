@@ -33,6 +33,10 @@ class Race:
             'tickStep': self.tickStep
         }
 
+    def resetTeams(self):
+        for bib in self.teams.keys():
+            self.teams[bib] = Team(self, bib, self.teams[bib].name)
+
     def updateTeam(self, team, state):
         team.rank = state.rank
         team.currentTimeIndex = state.currentTimeIndex

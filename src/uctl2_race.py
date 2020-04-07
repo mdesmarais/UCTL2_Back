@@ -34,11 +34,9 @@ async def broadcastRace(race, config, notifier, session):
         # before the end of the loop
         tasks = []
 
-        if state is None or state.status == RaceStatus.WAITING or state.status == RaceStatus.UNKNOWN:
-            # If the race is not started yet, then we don't need to continue the loop
-            logger.info('waiting for race')
-            await asyncio.sleep(REQUESTS_DELAY)
-            continue
+        if state is None:
+            logger.error('state is None')
+            break
 
         if firstLoop:
             # Doing some computations that have only be done once
@@ -54,13 +52,34 @@ async def broadcastRace(race, config, notifier, session):
             # Sends the first race state (initial informations) to all connected clients
             tasks.append(notifier.broadcastEvent(events.RACE_SETUP, race.toJSON()))
 
-        if state is None:
-            logger.error('Unable to read a race state from the given file')
-            break
+        if state.statusChanged():
+            logger.debug('New race status : %s', state.status)
+            race.status = state.status
+
+            if state.status == RaceStatus.RUNNING:
+                # Updates race starting time with the current timestamp
+                race.startTime = int(time.time())
+
+            event = {
+                'race': config['raceName'],
+                'status': state.status,
+                'startTime': race.startTime
+            }
+
+            tasks.append(asyncio.ensure_future(notifier.broadcastEvent(events.RACE_STATUS, event)))
+
+            if state.status == RaceStatus.WAITING:
+                race.resetTeams()
+                if len(tasks) > 0:
+                    await asyncio.wait(tasks)
+
+                await asyncio.sleep(REQUESTS_DELAY)
+                
+                continue
 
         # Sorts teams by their covered distance, in reverse order
         # The first team in the list is the leader of the race
-        sortedTeams = sorted(state.teams, key=lambda t: t.coveredDistance, reverse=True)
+        sortedTeams = sorted(state.teams, key=lambda team: team.coveredDistance, reverse=True)
 
         for rank, team in enumerate(sortedTeams):
             # Updates rank
@@ -71,7 +90,7 @@ async def broadcastRace(race, config, notifier, session):
             team = race.teams[teamState.bibNumber]
             race.updateTeam(team, teamState)
 
-            if teamState.currentStageChanged:
+            if teamState.currentStageChanged and len(teamState.intermediateTimes) > 0:
                 elapsedTime = teamState.intermediateTimes[team.currentTimeIndex] - teamState.startTime
                 team.pace = elapsedTime.total_seconds() * 1000 / team.coveredDistance
 
@@ -90,7 +109,7 @@ async def broadcastRace(race, config, notifier, session):
                     'stageRank': team.lastStageRank
                 })
 
-            if teamState.teamFinishedChanged:
+            if teamState.teamFinishedChanged and teamState.teamFinished:
                 # totalTime = sum of split times for timed stages only
                 totalTime = sum((x for i, x in enumerate(teamState.splitTimes) if race.stages[i]['timed']))
                 averagePace = totalTime * 1000 / race.length
@@ -110,27 +129,14 @@ async def broadcastRace(race, config, notifier, session):
                 })
         
         tasks.append(asyncio.ensure_future(notifier.broadcastEvents()))
-        
-        if state.statusChanged():
-            logger.debug('New race status : %s', state.status)
-            race.status = state.status
-
-            if state.status == RaceStatus.RUNNING:
-                # Updates race starting time with the current timestamp
-                race.startTime = int(time.time())
-
-            event = {
-                'race': config['raceName'],
-                'status': state.status,
-                'startTime': race.startTime
-            }
-
-            tasks.append(asyncio.ensure_future(notifier.broadcastEvent(events.RACE_STATUS, event)))
 
         # Waits for all async tasks    
         if len(tasks) > 0:
             await asyncio.wait(tasks)
-        
+
+        if state.status == RaceStatus.WAITING:
+            logger.info('Waiting for race')
+
         await asyncio.sleep(REQUESTS_DELAY)
 
     logger.info('End of the broadcast')
