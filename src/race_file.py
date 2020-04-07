@@ -1,3 +1,4 @@
+import csv
 import datetime
 
 BIB_NUMBER_FORMAT = 'Numéro'
@@ -6,8 +7,8 @@ CHECKPOINT_NAME_FORMAT = 'Interm (S%d)'
 STAGE_RANK_FORMAT = 'Clt Interm-1 (S%d)'
 END_SECTION_FORMAT = '3%d|1'
 DISTANCE_FORMAT = 'Distance'
-START_FORMAT = 'Start'
-FINISH_FORMAT = 'Finish'
+START_FORMAT = '21|1'
+FINISH_FORMAT = '33|1'
 EMPTY_VALUE_FORMAT = '0'
 
 
@@ -80,6 +81,40 @@ def getInt(container, key):
     
     return None
 
+
+def format_datetime(dt):
+    return '{:02}:{:02}:{:02}'.format(dt.hour, dt.minute, dt.second)
+
+def format_time(time):
+    hours, remainder = divmod(time, 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    return '{:02}:{:02}:{:02}'.format(int(hours), int(minutes), int(seconds))
+
+def process_file(simulator, stages):
+    rows = []
+
+    with open(simulator.race_file, 'w') as f:
+        writer = csv.DictWriter(f, simulator.headers, delimiter='\t')
+        writer.writeheader()
+
+        for team in simulator.race_teams:
+            row = dict(simulator.rows[team['bibNumber']])
+            
+            for i, stage in enumerate(stages):
+                stage_cols = stage_columns(i + 1)
+
+                if not team['bibNumber'] in stage[0]:
+                    for stage_col in stage_cols:
+                        row[stage_col] = '0'
+                elif not team['bibNumber'] in stage[1]:
+                    for stage_col in filter(lambda x: not x.startswith('2'), stage_cols):
+                        row[stage_col] = '0'
+
+            rows.append(row)
+            writer.writerow(row)
+
+    return rows
 
 def readIntermediateTimes(record):
     intermediateTimes = []
@@ -162,3 +197,7 @@ def readStageRanks(record):
 def readTime(record, column):
     date = datetime.date.today()
     return datetime.datetime.strptime(record[column], '%H:%M:%S').replace(year=date.year, month=date.month, day=date.day)
+
+
+def stage_columns(index):
+    return map(lambda x: x % (index,), ('Interm (S%d)', 'Clt Interm-1 (S%d)', '2%d|1', '3%d|1'))

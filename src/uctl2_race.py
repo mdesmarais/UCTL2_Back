@@ -3,15 +3,13 @@ import logging
 import time
 
 import events
-import notifier
 from race_state import RaceState, RaceStatus, readRaceStateFromFile, readRaceStateFromUrl
 
-DEBUG_DATA_SENT = True
-MAX_NETWORK_ERRORS = 10
 REQUESTS_DELAY = 2
 
+broadcast_running = True
 
-async def broadcastRace(race, config, session):
+async def broadcastRace(race, config, notifier, session):
     """
         Broadcasts the state of the race from a race file
 
@@ -27,15 +25,20 @@ async def broadcastRace(race, config, session):
     firstLoop = True
     raceFile = config['raceFile']
 
-    while True:
+    while broadcast_running:
         loopTime = int(time.time() - currentTime)
         currentTime = time.time()
-        #state = await readRaceStateFromFile(raceFile, config, loopTime, state, session, retreiveFileUrl)
         state = readRaceStateFromFile(raceFile, config, loopTime, state)
 
         # Stores async tasks that have to be executed
         # before the end of the loop
         tasks = []
+
+        if state is None or state.status == RaceStatus.WAITING or state.status == RaceStatus.UNKNOWN:
+            # If the race is not started yet, then we don't need to continue the loop
+            logger.info('waiting for race')
+            await asyncio.sleep(REQUESTS_DELAY)
+            continue
 
         if firstLoop:
             # Doing some computations that have only be done once
@@ -50,11 +53,6 @@ async def broadcastRace(race, config, session):
             
             # Sends the first race state (initial informations) to all connected clients
             tasks.append(notifier.broadcastEvent(events.RACE_SETUP, race.toJSON()))
-
-        if state.status == RaceStatus.WAITING or state.status == RaceStatus.UNKNOWN:
-            # If the race is not started yet, then we don't need to continue the loop
-            print('waiting for race')
-            continue
 
         if state is None:
             logger.error('Unable to read a race state from the given file')
@@ -112,8 +110,6 @@ async def broadcastRace(race, config, session):
                 })
         
         tasks.append(asyncio.ensure_future(notifier.broadcastEvents()))
-
-        # @TODO send events to db
         
         if state.statusChanged():
             logger.debug('New race status : %s', state.status)
@@ -134,9 +130,6 @@ async def broadcastRace(race, config, session):
         # Waits for all async tasks    
         if len(tasks) > 0:
             await asyncio.wait(tasks)
-        
-        if state.status == RaceStatus.FINISHED:
-            break
         
         await asyncio.sleep(REQUESTS_DELAY)
 

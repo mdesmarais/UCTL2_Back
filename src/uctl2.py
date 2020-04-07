@@ -1,17 +1,21 @@
-import aiohttp
 import asyncio
 import json
 import logging
 import os.path
+import signal
 import subprocess
 import sys
 from threading import Thread
 
-from config import Config
-from uctl2_race import broadcastRace
-from uctl2_setup import readRace, sendRace
+import aiohttp
+
 import events
-import notifier
+import uctl2_race
+from config import Config
+from notifier import Notifier
+from uctl2_setup import readRace
+
+root_logger = logging.getLogger()
 
 
 def createDefaultConfig(name):
@@ -37,32 +41,61 @@ def createDefaultConfig(name):
     return True
 
 
-def executeSimulation(simPath, configPath):
-    """
-        Executes the jar of the simulation
+def load_config(path):
+    logger = logging.getLogger(__name__)
 
-        It creates a new process where its output is redirected
-        to the sim logger (name=Sim).
-        This function should be executed in a separate thread.
+    logger.info('Loading configuration %s', path)
+    try:
+        with open(path, 'r') as f:
+            jsonConfig = json.load(f)
 
-        :param simPath: path to the simulation jar file
-        :ptype simPath: str
-        :param configPath: absolute path to the configuration file
-        :ptype configPath: str
-    """
-    logger = logging.getLogger('Sim')
-    logger.info('-- Starting simulation --')
-    process = subprocess.Popen(['java', '-jar', simPath, configPath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-    with process.stdout:
-        for line in iter(process.stdout.readline, b''):
-            logger.info(line.strip().decode('utf-8'))
-
-    process.wait()
-    logger.info('-- End of the simulation')
+            config = Config.readFromJson(jsonConfig)
+        
+        return config
+    except FileNotFoundError:
+        logger.error('Unable to open config file %s', path)
+    except json.JSONDecodeError as e:
+        logger.error('The given config file does not contain valid JSON\n-> %s', e)
+    
+    return False
 
 
-async def main():
+async def main(config, notifier): 
+    race = readRace(config)
+    notifier.race = race
+
+    if race is False:
+        await notifier.stopNotifier()
+        return
+
+    # Starting the race file broadcasting
+    uctl2_race.broadcast_running = True
+    async with aiohttp.ClientSession() as session:
+        await uctl2_race.broadcastRace(race, config, notifier, session)
+
+    await notifier.stopNotifier()
+
+
+def setup(config, handlers=[], loop=asyncio.get_event_loop()):
+    for handler in handlers:
+        root_logger.addHandler(handler)
+
+    root_logger.setLevel(logging.INFO)
+
+    loop.add_signal_handler(signal.SIGINT, stop_broadcast)
+    loop.add_signal_handler(signal.SIGTERM, stop_broadcast)
+
+    notifier = Notifier()
+
+    loop.run_until_complete(asyncio.gather(notifier.startNotifier(5680), notifier.broadcaster(), main(config, notifier)))
+    loop.close()
+
+
+def stop_broadcast(*args):
+    uctl2_race.broadcast_running = False
+
+
+if __name__ == '__main__':
     if len(sys.argv) == 1:
         print('Usage: uctl2.py path_to_config_file')
         configName = 'config.json'
@@ -70,54 +103,14 @@ async def main():
             print('A default configuration %s has been created' % (configName,))
         sys.exit(-1)
 
-    configFile = os.path.abspath(sys.argv[1])
-    config = None
-
+    config = load_config(os.path.abspath(sys.argv[1]))
+    
+    if config is False:
+        print('Unable to load config')
+        sys.exit(-1)
+    
     ch = logging.StreamHandler()
     formatter = logging.Formatter('[%(levelname)s] %(name)s - %(message)s')
     ch.setFormatter(formatter)
-    logging.basicConfig(handlers=[ch], level=logging.INFO)
-
-    logger = logging.getLogger(__name__)
-
-    logger.info('Loading configuration %s', configFile)
-    try:
-        with open(configFile, 'r') as f:
-            jsonConfig = json.load(f)
-
-            config = Config.readFromJson(jsonConfig)
-    except FileNotFoundError:
-        logger.error('Unable to open config file %s', configFile)
-        sys.exit(-1)
-    except json.JSONDecodeError as e:
-        logger.error('The given config file does not contain valid JSON\n-> %s', e)
-        sys.exit(-1)
     
-    if config is None:
-        sys.exit(-1)
-    
-    race = readRace(config)
-    notifier.race = race
-
-    if race is False:
-        sys.exit(-1)
-
-    # Sending initial informations to the server (route, teams, segments, race infos)
-    #if not sendRace(race, config['api']['baseUrl'], config['api']['actions']['setupRace']):
-    #    logger.error('Unable to send initial race informations')
-    #    sys.exit(-1)
-    
-    # Starting simulation
-    Thread(target=executeSimulation, args=[config['simPath'], configFile]).start()
-    await asyncio.sleep(2)
-
-    # Starting the race file broadcasting
-    async with aiohttp.ClientSession() as session:
-        await broadcastRace(race, config, session)
-
-    await notifier.stopNotifier()
-
-if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(asyncio.gather(notifier.startNotifier(5678), notifier.broadcaster(), main()))
-    loop.close()
+    setup(config, [ch])

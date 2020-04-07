@@ -75,7 +75,7 @@ def readRaceState(reader, config, loopTime, lastState):
 
     stagesRead = 0
 
-    raceStarted = True
+    raceStarted = False
     raceFinished = True
 
     for index, record in enumerate(reader):
@@ -89,10 +89,10 @@ def readRaceState(reader, config, loopTime, lastState):
         teamStarted = not record[race_file.START_FORMAT] == race_file.EMPTY_VALUE_FORMAT
         teamFinished = not record[race_file.FINISH_FORMAT] == race_file.EMPTY_VALUE_FORMAT
 
-        if raceStarted and not teamStarted:
-            raceStarted = False
+        if teamStarted:
+            raceStarted = True
         
-        if raceFinished and not teamFinished:
+        if not teamFinished:
             raceFinished = False
 
         bibNumber = race_file.getInt(record, race_file.BIB_NUMBER_FORMAT)
@@ -159,14 +159,15 @@ def readRaceState(reader, config, loopTime, lastState):
             teamState.coveredDistance += 2.5 * loopTime * config['tickStep']
 
         raceState.teams.append(teamState)
-
+    
     # Updating the status of the race for the current state
-    if raceFinished:
-        raceState.setStatus(RaceStatus.FINISHED)
-    elif raceStarted:
+    if not raceStarted:
+        raceState.setStatus(RaceStatus.WAITING)
+    elif not raceFinished:
         raceState.setStatus(RaceStatus.RUNNING)
     else:
-        raceState.setStatus(RaceStatus.WAITING)
+        raceState.setStatus(RaceStatus.FINISHED)
+
     return raceState
 
 

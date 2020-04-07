@@ -3,7 +3,6 @@ import logging
 import urllib
 
 import gpxpy
-import requests
 from haversine import haversine
 
 from race import Race
@@ -152,31 +151,3 @@ def readRace(config):
         racePointsWithStages.append(stagePoints)
 
     return Race(config['raceName'], racePointsWithStages, config['stages'], config['tickStep'])
-
-
-def sendRace(race, baseUrl, action):
-    """
-        Sends the race (infos, teams, points) to a server throught post method
-
-        :param race: informations about the race
-        :ptype race: dict
-        :return: true if the race was correctly sent to the server, false if not
-        :rtype: bool
-    """
-    logger = logging.getLogger(__name__)
-
-    try:
-        url = urllib.parse.urljoin(baseUrl, action)
-        r = requests.post(url, data={"race": json.dumps(race)})
-
-        #print(json.dumps(race))
-
-        if not r.status_code == requests.codes.ok:
-            logger.error('Requests response error : %d', r.status_code)
-            logger.error(r.content)
-            return False
-    except requests.exceptions.RequestException as e:
-        logger.error('Something bad happened when trying to send a request\n->%s', e)
-        return False
-
-    return True

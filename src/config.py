@@ -28,21 +28,10 @@ class Config(dict):
         self.routeFile = 'not set'
         self.simPath = 'not set'
         self.encoding = 'utf-8'
-        """self.api = {
-            'baseUrl': 'http://127.0.0.1',
-            'actions': {
-                'setupRace': '/setup-race',
-                'updateRaceStatus': '/race-status',
-                'updateTeams': '/teams'
-            }
-        }"""
+        self.teams = []
 
-        # Those fields are only used by the simulator
-        # We put them here in order to create a default config
-        # that works with the two apps
         self.fileUpdateRate = 1
         self.raceLength = 1
-        self.teams = []
 
     
     @classmethod
@@ -109,7 +98,18 @@ class Config(dict):
             print('The given simPath does not exist or is not a jar file')
             return None
 
-        #config.api = jsonConfig['api']
+        config.teams = jsonConfig['teams']
+        bibs = list(map(lambda team: team['bibNumber'], config.teams))
+
+        if not len(set(bibs)) == len(bibs):
+            print('Bibs must be unique')
+            return None
+
+        bibs_under_one = list(filter(lambda x: x < 1, bibs))
+
+        if len(bibs_under_one) > 0:
+            print('Bibs must be greater or equal to 1')
+            return None
 
         config.encoding = jsonConfig['encoding']
         

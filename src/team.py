@@ -19,7 +19,7 @@ class Team:
 
         self._coveredDistance = 0
         self._progression = 0
-        self._pos = self.race.plainRacePoints[0]
+        self._pos = self.race.plainRacePoints[0] if len(self.race.plainRacePoints) > 0 else (0, 0)
         self._rank = 0
 
     @property
