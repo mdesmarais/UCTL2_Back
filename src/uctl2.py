@@ -60,14 +60,7 @@ def load_config(path):
     return False
 
 
-async def main(config, notifier): 
-    race = readRace(config)
-    notifier.race = race
-
-    if race is False:
-        await notifier.stopNotifier()
-        return
-
+async def main(config, race, notifier): 
     # Starting the race file broadcasting
     uctl2_race.broadcast_running = True
     async with aiohttp.ClientSession() as session:
@@ -82,12 +75,18 @@ def setup(config, handlers=[], loop=asyncio.get_event_loop()):
 
     root_logger.setLevel(logging.INFO)
 
+    race = readRace(config)
+
+    if race is False:
+        root_logger.error('Unable to read race from config')
+        return
+
+    notifier = Notifier(race)
+
     loop.add_signal_handler(signal.SIGINT, stop_broadcast)
     loop.add_signal_handler(signal.SIGTERM, stop_broadcast)
 
-    notifier = Notifier()
-
-    loop.run_until_complete(asyncio.gather(notifier.startNotifier(5680), notifier.broadcaster(), main(config, notifier)))
+    loop.run_until_complete(asyncio.gather(notifier.startNotifier(5680), notifier.broadcaster(), main(config, race, notifier)))
     loop.close()
 
 

@@ -2,8 +2,8 @@
 CONFIG_SCHEMA = {
     'type': 'object',
     'required': [
-        'raceName', 'routeFile', 'raceFile', 'simPath', 'stages', 
-        'timeCheckpoints', 'tickStep', 'fileUpdateRate', 'teams', 'encoding'
+        'raceName', 'routeFile', 'raceFile', 'stages', 
+        'timeCheckpoints', 'teams', 'encoding'
     ],
     'properties': {
         'raceName': {
@@ -17,10 +17,6 @@ CONFIG_SCHEMA = {
         },
         'raceFile': {
             'title': 'Chemin vers un fichier de course (doit exister avant de lancer le backend python)',
-            'type': 'string'
-        },
-        'simPath': {
-            'title': 'Chemin vers le fichier jar du simulateur',
             'type': 'string'
         },
         'stage': {
@@ -53,14 +49,6 @@ CONFIG_SCHEMA = {
             'items': {
                 'type': 'integer'
             }
-        },
-        'tickStep': {
-            'title': 'Indique le temps écoulé (en secondes) dans la simulation pour 1 secodne réelle',
-            'type': 'integer'
-        },
-        'fileUpdateRate': {
-            'title': 'Intervalle de mise à jour du fichier de course par le simulateur (en secondes)',
-            'type': 'integer'
         },
         'teams': {
             'title': 'Liste des équipes engagées (1 minimum)',

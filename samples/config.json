@@ -1,6 +1,5 @@
 {
   "raceName": "Univercity Trail 2020",
-  "tickStep": 60,
   "timeCheckpoints": [],
   "stages": [
     {
@@ -32,8 +31,6 @@
   "raceFile": "race.csv",
   "encoding": "utf-8",
   "routeFile": "samples/uctl2.gpx",
-  "simPath": "UCTL2.jar",
-  "fileUpdateRate": 1,
   "teams": [
     {
       "bibNumber": 1,

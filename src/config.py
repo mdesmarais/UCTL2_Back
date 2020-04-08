@@ -1,4 +1,5 @@
 import json
+import logging
 import os.path
 
 import jsonschema
@@ -16,6 +17,8 @@ class Config(dict):
         accessed by using the key notation : config['key'].
     """
 
+    logger = logging.getLogger(__name__)
+
     def __init__(self):
         super().__init__()
         self.__dict__ = self
@@ -26,12 +29,8 @@ class Config(dict):
         self.stages = []
         self.raceFile = 'not set'
         self.routeFile = 'not set'
-        self.simPath = 'not set'
         self.encoding = 'utf-8'
         self.teams = []
-
-        self.fileUpdateRate = 1
-        self.raceLength = 1
 
     
     @classmethod
@@ -52,15 +51,13 @@ class Config(dict):
         except jsonschema.exceptions.ValidationError as e:
             path = e.absolute_path
             if path:
-                print('Config validator error for field "%s" : %s (%s=%s)' % (path.pop(), e.message, e.validator, e.validator_value))
+                cls.logger.error('Config validator error for field "%s" : %s (%s=%s)' % (path.pop(), e.message, e.validator, e.validator_value))
             else:
-                print('Config validator error :', e.message)
+                cls.logger.error('Config validator error : %s', e.message)
             return None
 
         config = Config()
         config.raceName = jsonConfig['raceName']
-
-        config.tickStep = int(jsonConfig['tickStep'])
 
         config.timeCheckpoints = jsonConfig['timeCheckpoints']
         config.stages = jsonConfig['stages']
@@ -78,37 +75,35 @@ class Config(dict):
             if os.path.isfile(routeFile):
                 config.routeFile = routeFile
             else:
-                print('The given routeFile is not an existing file')
+                cls.logger.error('The given routeFile is not an existing file')
                 return None
         else:
-            print('Route file must have the extension .gpx or .json')
+            cls.logger.error('Route file must have the extension .gpx or .json')
             return None
         
         raceFile = jsonConfig['raceFile']
-        if os.path.isfile(raceFile):
-            config.raceFile = raceFile
-        else:
-            print('The given raceFile does not exist')
-            return None
+        if not os.path.isfile(raceFile):
+            try:
+                # Trying to create a default file if it does not exist
+                with open(raceFile, 'w'):
+                    pass
+            except OSError:
+                cls.logger.error('Unable to create the raceFile')
+                return None
         
-        simPath = jsonConfig['simPath']
-        if simPath.endswith('.jar') and os.path.isfile(simPath):
-            config.simPath = simPath
-        else:
-            print('The given simPath does not exist or is not a jar file')
-            return None
+        config.raceFile = raceFile
 
         config.teams = jsonConfig['teams']
-        bibs = list(map(lambda team: team['bibNumber'], config.teams))
+        bibs = [team['bibNumber'] for team in config.teams]
 
         if not len(set(bibs)) == len(bibs):
-            print('Bibs must be unique')
+            cls.logger.error('Bibs must be unique')
             return None
 
-        bibs_under_one = list(filter(lambda x: x < 1, bibs))
+        bibs_under_one = [x for x in bibs if x < 1]
 
         if len(bibs_under_one) > 0:
-            print('Bibs must be greater or equal to 1')
+            cls.logger.error('Bibs must be greater or equal to 1')
             return None
 
         config.encoding = jsonConfig['encoding']

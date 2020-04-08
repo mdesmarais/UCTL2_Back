@@ -9,8 +9,8 @@ import events as customEvent
 
 class Notifier:
 
-    def __init__(self):
-        self.race = None
+    def __init__(self, race):
+        self.race = race
         self.clients = set()
         self.events = asyncio.Queue(50)
         self.delayedEvents = []
