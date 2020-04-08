@@ -23,7 +23,7 @@ async def broadcastRace(race, config, notifier, session):
 
     state = None
     firstLoop = True
-    raceFile = config['raceFile']
+    raceFile = config.raceFile
 
     while broadcast_running:
         loopTime = int(time.time() - currentTime)
@@ -61,7 +61,7 @@ async def broadcastRace(race, config, notifier, session):
                 race.startTime = int(time.time())
 
             event = {
-                'race': config['raceName'],
+                'race': config.raceName,
                 'status': state.status,
                 'startTime': race.startTime
             }

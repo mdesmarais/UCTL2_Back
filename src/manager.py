@@ -7,8 +7,6 @@ import sys
 from multiprocessing import Process
 from typing import Any, List
 
-import eventlet
-import redis
 from flask import Flask
 from flask_socketio import SocketIO, emit
 
@@ -16,41 +14,7 @@ import race_file
 import uctl2
 from config import Config
 from simulator import Simulator
-
-eventlet.monkey_patch()
 socketio = SocketIO()
-
-
-class SocketIOHandler(logging.Handler):
-
-    """
-        Logger handler used to send records through socketio
-
-        We use a redis message queue in order to emit events
-        from another process.
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.client = SocketIO(message_queue='redis://')
-
-    def emit(self, record: logging.LogRecord) -> None:
-        """
-            Custom action for each record received
-
-            This function is called by the logger.
-            We it received a record, it emits an event.
-        """
-        self.client.emit('broadcast_logs', self.format(record))
-
-
-def get_redis_client() -> redis.StrictRedis:
-    """
-        Creates a new connection to a redis server
-
-        :return: new instance of a redis client
-    """
-    return redis.Redis(charset='utf-8', decode_responses=True)
 
 
 def start_broadcast(config: Config) -> None:
@@ -60,17 +24,14 @@ def start_broadcast(config: Config) -> None:
         This function should be runned in another process.
         A new event loop is created and set to asyncio, it will
         be used by the broadcast script.
-
-        A socketio handler is created to send script's output into a
-        redis queue through socketio. Records will be automaticaly sended
-        to all clients by the main server.
     """
-    handler = SocketIOHandler()
-    formatter = logging.Formatter('[%(asctime)s][%(levelname)s] %(name)s - %(message)s', '%H:%M:%S')
-    handler.setFormatter(formatter)
-
+    print('Starting broadcast')
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
+
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter('[%(levelname)s] %(name)s - %(message)s')
+    handler.setFormatter(formatter)
 
     uctl2.setup(config, handlers=[handler], loop=loop)
 
@@ -90,70 +51,48 @@ def update_racefile_thread(sim: Simulator, stages: List[Any]) -> None:
     }, broadcast=True)
 
 
-def create_app() -> Flask:
+def create_app(config, pid) -> Flask:
     """
         Creates a new Flask app
 
         This app only contains socketio events, there is not http route.
-        We are using a redis message queue in order to emit events from
-        another process.
 
         :return: instance of the new Flask app
     """
     app = Flask(__name__)
-    socketio.init_app(app, cors_allowed_origins="*", message_queue='redis://')
-
-    with open('config.json', 'r') as f:
-        json_config = json.load(f)
-        config = Config.readFromJson(json_config)
-
-    if config is None:
-        print('Could not load config')
-        sys.exit(-1)
+    app.broadcast_pid = pid
+    socketio.init_app(app, cors_allowed_origins="*")
 
     sim = Simulator.create(config, socketio)
     sim.compute_times()
 
+    def restart_broadcast(on_file_updated, on_race_finished) -> None:
+        stop_broadcast()
+
+        p = Process(target=start_broadcast, args=(config,))
+        p.start()
+
+        app.broadcast_pid = p.pid
+        
+        start_simulation(on_file_updated, on_race_finished)
+
+    def start_simulation(on_file_updated, on_race_finished):
+        simulation = sim.get_simulation(config.tickStep)
+        socketio.start_background_task(simulation.run, on_file_updated=on_file_updated, on_race_finished=on_race_finished)
+        sim.notify_simulation_status()
+
+    def stop_broadcast(*args):
+        try:
+            os.kill(app.broadcast_pid, signal.SIGTERM)
+            socketio.sleep(5)
+            print('Killing process with pid', app.broadcast_pid)
+            os.kill(app.broadcast_pid, signal.SIGKILL)
+        except OSError:
+            pass
+
     @socketio.on('connect')
     def new_client():
-        redis_client = get_redis_client()
-        pid = redis_client.get('broadcast_process_pid')
-
-        data = sim.to_json()
-        data['broadcast_status'] = 0 if pid is None else 1
-        emit('initialize', data)
-
-    @socketio.on('toggle_broadcast')
-    def toggle_broadcast():
-        # We store the pid of the broadcast process into
-        # the redis server
-        print('asking redis')
-        redis_client = get_redis_client()
-        pid = redis_client.get('broadcast_process_pid')
-
-        if pid is None:
-            # Creates a new process for the broadcast
-            # We use the option daemon=True to stop it when
-            # this application is stopped
-            p = Process(target=start_broadcast, args=(config,), daemon=True)
-            p.start()
-            app.logger.info('Starting broadcast')
-            print('broadcast pid=', p.pid, 'current pid=', os.getpid())
-            redis_client.set('broadcast_process_pid', p.pid)
-        else:
-            app.logger.info('stopping broadcast')
-            redis_client.delete('broadcast_process_pid')
-            print('killing pid', pid)
-
-            try:
-                os.kill(int(pid), signal.SIGTERM)
-            except ProcessLookupError:
-                pass
-
-        emit('broadcast_status_updated', {
-            'status': 1 if pid is None else 0
-        }, broadcast=True)
-        print('emit', 1 if pid is None else 0, '\n')
+        emit('initialize', sim.to_json())
 
     @socketio.on('toggle_sim')
     def toggle_sim(data):
@@ -180,13 +119,15 @@ def create_app() -> Flask:
 
         if sim.simulation_status == 1:
             sim.stop_simulation()
+            sim.notify_simulation_status()
         else:
-            simulation = sim.get_simulation(tick_step)
-            # We use 2 callbacks to track updates and status of the simulation
-            socketio.start_background_task(simulation.run,
-                on_file_updated=lambda rows: socketio.emit('racefile', {'rows': rows}), on_race_finished=sim.notify_simulation_status)
-
-        sim.notify_simulation_status()
+            if config.tickStep == tick_step:
+                start_simulation(on_file_updated=lambda rows: socketio.emit('racefile', {'rows': rows}), 
+                    on_race_finished=sim.notify_simulation_status)
+            else:
+                config.tickStep = tick_step
+                socketio.start_background_task(restart_broadcast, on_file_updated=lambda rows: socketio.emit('racefile', {'rows': rows}),
+                    on_race_finished=sim.notify_simulation_status)
 
     @socketio.on('stop_sim')
     def stop_sim():
@@ -218,9 +159,26 @@ def create_app() -> Flask:
             app.logger.info('Update race file')
             socketio.start_background_task(update_racefile_thread, sim, data['stages'])
 
+    signal.signal(signal.SIGTERM, stop_broadcast)
     return app
 
 
 if __name__ == '__main__':
-    app = create_app()
+    if len(sys.argv) == 1:
+        print('Usage: uctl2.py path_to_config_file')
+        configName = 'config.json'
+        if not os.path.isfile(configName) and createDefaultConfig(configName):
+            print('A default configuration %s has been created' % (configName,))
+        sys.exit(-1)
+
+    config = uctl2.load_config(os.path.abspath(sys.argv[1]))
+    
+    if config is False:
+        print('Config error')
+        sys.exit(-1)
+
+    p = Process(target=start_broadcast, args=(config,))
+    p.start()
+
+    app = create_app(config, p.pid)
     socketio.run(app)

@@ -121,7 +121,7 @@ def readRace(config):
             about the race or False if an error occured
         :rtype: dict | bool
     """
-    routeFile = config['routeFile']
+    routeFile = config.routeFile
     if routeFile.endswith('.gpx'):
         points = extractTrackPointsFromGpxFile(routeFile)
     else:
@@ -136,7 +136,7 @@ def readRace(config):
     lastRacePoint = 0
 
     # Race points are grouped by their stage
-    for stage in config['stages']:
+    for stage in config.stages:
         d = stage['start'] + stage['length']
         stagePoints = []
 
@@ -150,4 +150,4 @@ def readRace(config):
 
         racePointsWithStages.append(stagePoints)
 
-    return Race(config['raceName'], racePointsWithStages, config['stages'], config['tickStep'])
+    return Race(config.raceName, racePointsWithStages, config.stages, config.tickStep)

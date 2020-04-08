@@ -170,7 +170,7 @@ class Simulator:
     def notify_simulation_status(self):
         self.socketio.emit('sim_status_updated', {
             'status': self.simulation_status
-        }, broadcast=True)
+        })
 
     @property
     def race_duration(self) -> int:

@@ -7,7 +7,7 @@ import jsonschema
 from config_schema import CONFIG_SCHEMA
 
 
-class Config(dict):
+class Config:
 
     """
         Reprents a JSON configuration
@@ -21,8 +21,6 @@ class Config(dict):
 
     def __init__(self):
         super().__init__()
-        self.__dict__ = self
-
         self.raceName = 'Unknown'
         self.tickStep = 0
         self.timeCheckpoints = []

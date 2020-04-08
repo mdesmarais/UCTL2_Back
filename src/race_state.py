@@ -171,14 +171,14 @@ def readRaceState(reader, config, loopTime, lastState):
         if len(splitTimes) > 0:
             # Computing the covered distance since the last loop (step distance)
             if teamFinished:
-                lastStage = config['stages'][currentStage - 1]
+                lastStage = config.stages[currentStage - 1]
                 teamState.coveredDistance = lastStage['start'] + lastStage['length']
             elif teamState.currentStageChanged:
-                stageDistanceFromStart = config['stages'][currentStage]['start']
+                stageDistanceFromStart = config.stages[currentStage]['start']
 
-                teamState.coveredDistance = config['stages'][currentStage]['start']
+                teamState.coveredDistance = config.stages[currentStage]['start']
 
-                raceTime = (datetime.datetime.now() - startTime) * config['tickStep']
+                raceTime = (datetime.datetime.now() - startTime) * config.tickStep
                 raceDateTime = startTime + raceTime
                 timeSinceStageStarted = (raceDateTime - intermediateTimes[currentTimeIndex]).total_seconds()
                 elapsedTime = (intermediateTimes[currentTimeIndex] - startTime)
@@ -186,16 +186,16 @@ def readRaceState(reader, config, loopTime, lastState):
                 
                 teamState.coveredDistance = stageDistanceFromStart + averageSpeed * timeSinceStageStarted
             else:
-                stageDistanceFromStart = config['stages'][currentStage]['start']
+                stageDistanceFromStart = config.stages[currentStage]['start']
 
                 if stageDistanceFromStart > 0:
                     if splitTimes[currentTimeIndex] > 0:
                         elapsedTime = intermediateTimes[currentTimeIndex] - startTime
                         averageSpeed = stageDistanceFromStart / elapsedTime.total_seconds()
-                    teamState.coveredDistance += averageSpeed * loopTime * config['tickStep']
+                    teamState.coveredDistance += averageSpeed * loopTime * config.tickStep
         else:
             # Default pace when we don't known each team's pace yet
-            teamState.coveredDistance += 2.5 * loopTime * config['tickStep']
+            teamState.coveredDistance += 2.5 * loopTime * config.tickStep
 
         raceState.teams.append(teamState)
     
@@ -232,7 +232,7 @@ def readRaceStateFromFile(filePath, config, loopTime, lastState):
     raceState = None
 
     try:
-        with open(config['raceFile'], 'r', encoding=config['encoding']) as raceFile:
+        with open(config.raceFile, 'r', encoding=config.encoding) as raceFile:
             reader = csv.DictReader(raceFile, delimiter='\t')
             raceState = readRaceState(reader, config, loopTime, lastState)
     except IOError as e:
@@ -267,7 +267,7 @@ async def readRaceStateFromUrl(filePath, config, loopTime, lastState, session, u
 
     try:
         async with session.get(url) as r:
-            content = await r.text(encoding=config['encoding'])
+            content = await r.text(encoding=config.encoding)
             print('file downloaded')
         reader = csv.DictReader(content.split('\n'), delimiter='\t')
 
