@@ -63,7 +63,8 @@ async def broadcastRace(race, config, notifier, session):
             event = {
                 'race': config.raceName,
                 'status': state.status,
-                'startTime': race.startTime
+                'startTime': race.startTime,
+                'tickStep': config.tickStep
             }
 
             tasks.append(asyncio.ensure_future(notifier.broadcastEvent(events.RACE_STATUS, event)))

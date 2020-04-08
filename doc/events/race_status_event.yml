@@ -9,3 +9,6 @@ payload:
     
     startTime: Timestamp indiquant l'heure de début de la course (non renseignée si status=0)
         type: Timestamp
+
+    tickStep: Nombre de secondes simulées pour une seconde réelle
+        type: Integer

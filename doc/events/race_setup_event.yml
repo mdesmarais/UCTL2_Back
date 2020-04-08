@@ -76,3 +76,6 @@ payload:
                     type: Array
                     items:
                         type: Integer
+
+    tickStep: Nombre de secondes simulées pour une seconde réelle
+        type: Integer
