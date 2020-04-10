@@ -35,8 +35,9 @@ async def broadcastRace(race, config, notifier, session):
         tasks = []
 
         if state is None:
-            logger.error('state is None')
-            break
+            logger.info('Waiting for race')
+            await asyncio.sleep(REQUESTS_DELAY)
+            continue
 
         if firstLoop:
             # Doing some computations that have only be done once

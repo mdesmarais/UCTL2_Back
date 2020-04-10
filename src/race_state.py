@@ -76,6 +76,8 @@ def readRaceState(reader, config, loopTime, lastState):
     raceStarted = False
     raceFinished = True
 
+    index = 0
+
     for index, record in enumerate(reader):
         if lastState is None:
             raceState.stagesNumber = race_file.computeCheckpointsNumber(record)
@@ -174,17 +176,19 @@ def readRaceState(reader, config, loopTime, lastState):
                 lastStage = config.stages[currentStage - 1]
                 teamState.coveredDistance = lastStage['start'] + lastStage['length']
             elif teamState.currentStageChanged:
-                stageDistanceFromStart = config.stages[currentStage]['start']
+                """stageDistanceFromStart = config.stages[currentStage]['start']
 
-                teamState.coveredDistance = config.stages[currentStage]['start']
+                aa = datetime.datetime.now() - (teamState.realStartTime - teamState.startTime)
 
-                raceTime = (datetime.datetime.now() - startTime) * config.tickStep
+                raceTime = (aa - startTime) * config.tickStep
                 raceDateTime = startTime + raceTime
                 timeSinceStageStarted = (raceDateTime - intermediateTimes[currentTimeIndex]).total_seconds()
                 elapsedTime = (intermediateTimes[currentTimeIndex] - startTime)
+                print(timeSinceStageStarted, elapsedTime)
                 averageSpeed = stageDistanceFromStart / elapsedTime.total_seconds()
                 
-                teamState.coveredDistance = stageDistanceFromStart + averageSpeed * timeSinceStageStarted
+                teamState.coveredDistance = stageDistanceFromStart + averageSpeed * timeSinceStageStarted"""
+                teamState.coveredDistance = config.stages[currentStage]['start']
             else:
                 stageDistanceFromStart = config.stages[currentStage]['start']
 
@@ -193,11 +197,16 @@ def readRaceState(reader, config, loopTime, lastState):
                         elapsedTime = intermediateTimes[currentTimeIndex] - startTime
                         averageSpeed = stageDistanceFromStart / elapsedTime.total_seconds()
                     teamState.coveredDistance += averageSpeed * loopTime * config.tickStep
+        elif not raceState.status == RaceStatus.RUNNING:
+            teamState.coveredDistance = 0
         else:
             # Default pace when we don't known each team's pace yet
             teamState.coveredDistance += 2.5 * loopTime * config.tickStep
 
         raceState.teams.append(teamState)
+
+    if index == 0:
+        return None
     
     # Updating the status of the race for the current state
     if not raceStarted:

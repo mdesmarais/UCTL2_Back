@@ -22,7 +22,7 @@ class Config:
     def __init__(self):
         super().__init__()
         self.raceName = 'Unknown'
-        self.tickStep = 0
+        self.tickStep = 1
         self.timeCheckpoints = []
         self.stages = []
         self.raceFile = 'not set'
