@@ -1,13 +1,20 @@
 import json
-import logging
 import os.path
+from typing import Any, Dict
 
 import jsonschema
 
 from config_schema import CONFIG_SCHEMA
 
 
-class Config:
+class InvalidConfigError(Exception):
+    """
+        Represents an error when a configuration is not valid (wrong format, invalid values, ...)
+    """
+    pass
+
+
+class Config(dict):
 
     """
         Reprents a JSON configuration
@@ -17,10 +24,10 @@ class Config:
         accessed by using the key notation : config['key'].
     """
 
-    logger = logging.getLogger(__name__)
-
     def __init__(self):
         super().__init__()
+        self.__dict__ = self
+
         self.raceName = 'Unknown'
         self.tickStep = 1
         self.timeCheckpoints = []
@@ -32,7 +39,7 @@ class Config:
 
     
     @classmethod
-    def readFromJson(cls, jsonConfig):
+    def readFromJson(cls, jsonConfig: Dict[str, Any]) -> 'Config':
         """
             Loads and validates the given configuration
 
@@ -40,19 +47,19 @@ class Config:
             It contains the format that the given configuration should have.
 
             :param jsonConfig: a dictionnary containing a JSON configuration
-            :ptype jsonConfig: dict
-            :return: an instance of Config or None if an error occured
-            :rtype: Config
+            :return: an instance of Config
+            :raises InvalidConfigError: if the configuration is not valid
         """
         try:
             jsonschema.validate(instance=jsonConfig, schema=CONFIG_SCHEMA)
         except jsonschema.exceptions.ValidationError as e:
             path = e.absolute_path
             if path:
-                cls.logger.error('Config validator error for field "%s" : %s (%s=%s)' % (path.pop(), e.message, e.validator, e.validator_value))
+                msg = 'Config validator error for field "%s" : %s (%s=%s)' % (path.pop(), e.message, e.validator, e.validator_value)
             else:
-                cls.logger.error('Config validator error : %s', e.message)
-            return None
+                msg = 'Config validator error : ' + e.message
+            
+            raise IndentationError(msg)
 
         config = Config()
         config.raceName = jsonConfig['raceName']
@@ -73,11 +80,9 @@ class Config:
             if os.path.isfile(routeFile):
                 config.routeFile = routeFile
             else:
-                cls.logger.error('The given routeFile is not an existing file')
-                return None
+                raise InvalidConfigError('The given routeFile is not an existing file')
         else:
-            cls.logger.error('Route file must have the extension .gpx or .json')
-            return None
+            raise InvalidConfigError('Route file must have the extension .gpx or .json')
         
         raceFile = jsonConfig['raceFile']
         if not os.path.isfile(raceFile):
@@ -86,23 +91,21 @@ class Config:
                 with open(raceFile, 'w'):
                     pass
             except OSError:
-                cls.logger.error('Unable to create the raceFile')
-                return None
+                raise InvalidConfigError('Unable to create the raceFile')
         
         config.raceFile = raceFile
 
         config.teams = jsonConfig['teams']
         bibs = [team['bibNumber'] for team in config.teams]
 
+        # We use a set to check if all bibs are unique
         if not len(set(bibs)) == len(bibs):
-            cls.logger.error('Bibs must be unique')
-            return None
+            raise InvalidConfigError('Bibs must be unique')
 
         bibs_under_one = [x for x in bibs if x < 1]
 
         if len(bibs_under_one) > 0:
-            cls.logger.error('Bibs must be greater or equal to 1')
-            return None
+            raise InvalidConfigError('Bibs must be greater or equal to 1')
 
         config.encoding = jsonConfig['encoding']
         
