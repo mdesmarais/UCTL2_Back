@@ -1,7 +1,5 @@
-from uctl2_back.utils import Serializable
 
-
-class Team(Serializable):
+class Team:
 
     def __init__(self, race, bib, name):
         self.race = race

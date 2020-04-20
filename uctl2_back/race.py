@@ -2,10 +2,9 @@ import time
 
 from uctl2_back.race_state import RaceStatus
 from uctl2_back.team import Team
-from uctl2_back.utils import Serializable
 
 
-class Race(Serializable):
+class Race:
 
     def __init__(self, name, racePoints, stages, tickStep):
         self.name = name
