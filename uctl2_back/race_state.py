@@ -117,7 +117,7 @@ def readRaceState(reader, config, loopTime, lastState):
                 if i >= len(ended_stage_times):
                     break
 
-                if stage['timed']:
+                if stage.is_timed:
                     i += 1
                 
                 j += 1
@@ -129,7 +129,7 @@ def readRaceState(reader, config, loopTime, lastState):
 
         i, j, k = (0, 0, 0)
         for stage in config.stages:
-            if stage['timed']:
+            if stage.is_timed:
                 i += 1
                 j += 1
                 continue
@@ -174,7 +174,7 @@ def readRaceState(reader, config, loopTime, lastState):
             # Computing the covered distance since the last loop (step distance)
             if teamFinished:
                 lastStage = config.stages[currentStage - 1]
-                teamState.coveredDistance = lastStage['start'] + lastStage['length']
+                teamState.coveredDistance = lastStage.dst_from_start + lastStage.lenght
             elif teamState.currentStageChanged:
                 """stageDistanceFromStart = config.stages[currentStage]['start']
 

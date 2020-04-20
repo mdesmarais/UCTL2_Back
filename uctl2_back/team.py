@@ -1,5 +1,7 @@
+from uctl2_back.utils import Serializable
 
-class Team:
+
+class Team(Serializable):
 
     def __init__(self, race, bib, name):
         self.race = race
@@ -74,7 +76,7 @@ class Team:
         self.oldRank = self.rank
         self._rank = rank
     
-    def toJSON(self):
+    def serialize(self):
         return {
             'bibNumber': self.bibNumber,
             'name': self.name,

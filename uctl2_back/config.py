@@ -3,17 +3,12 @@ from typing import Any, Dict
 
 import jsonschema
 
+from uctl2_back.utils import InvalidConfigError
 from uctl2_back.config_schema import CONFIG_SCHEMA
+from uctl2_back.stage import Stage
 
 
-class InvalidConfigError(Exception):
-    """
-        Represents an error when a configuration is not valid (wrong format, invalid values, ...)
-    """
-    pass
-
-
-class Config(dict):
+class Config:
 
     """
         Reprents a JSON configuration
@@ -24,9 +19,6 @@ class Config(dict):
     """
 
     def __init__(self):
-        super().__init__()
-        self.__dict__ = self
-
         self.raceName = 'Unknown'
         self.tickStep = 1
         self.timeCheckpoints = []
@@ -36,7 +28,6 @@ class Config(dict):
         self.encoding = 'utf-8'
         self.teams = []
 
-    
     @classmethod
     def read_from_json(cls, json_config: Dict[str, Any]) -> 'Config':
         """
@@ -64,15 +55,22 @@ class Config(dict):
         config.raceName = json_config['raceName']
 
         config.timeCheckpoints = json_config['timeCheckpoints']
-        config.stages = json_config['stages']
 
-        for i, stage in enumerate(config.stages):
+        config.stages = []
+        last_stage = None
+
+        for i, raw_stage in enumerate(json_config['stages']):
+            if raw_stage['length'] <= 0:
+                raise InvalidConfigError('Stage length must be strictely positive')
+
             if i == 0:
-                stage['start'] = 0
+                dst_from_start = 0
             else:
-                lastStage = config.stages[i - 1]
-
-                stage['start'] = lastStage['start'] + lastStage['length']
+                dst_from_start = last_stage.dst_from_start + last_stage.length
+            
+            stage = Stage(i, raw_stage['name'], dst_from_start, raw_stage['length'], raw_stage['timed'])
+            last_stage = stage
+            config.stages.append(stage)
 
         routeFile = json_config['routeFile']
         if routeFile.endswith('.gpx') or routeFile.endswith('.json'):

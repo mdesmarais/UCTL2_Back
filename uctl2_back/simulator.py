@@ -55,10 +55,10 @@ class Simulator:
         j = 1
 
         for i, stage in enumerate(config.stages):
-            if not stage['timed']:
+            if not stage.is_timed:
                 continue
 
-            distance += stage['length']
+            distance += stage.length
             sim.headers.extend(race_file.stage_columns(j))
             j += 1
 
@@ -93,7 +93,7 @@ class Simulator:
             j = 1
             for i, stage in enumerate(self.race_stages):
                 pace += pace * random.uniform(-0.2, 0.2)
-                split_time = stage['length'] * pace / 1000
+                split_time = stage.length * pace / 1000
 
                 stages_times[i].append((team['bibNumber'], split_time))
                 entrance_time = self.start_time if i == 0 else self.stages_inter_times[i - 1][-1]
@@ -101,7 +101,7 @@ class Simulator:
                 inter_time = entrance_time + datetime.timedelta(seconds=split_time)
                 self.stages_inter_times[i].append(inter_time)
 
-                if stage['timed']:
+                if stage.is_timed:
                     values['Interm (S%d)' % (j,)] = race_file.format_time(split_time)
                     values['2%d|1' % (j,)] = race_file.format_datetime(entrance_time)
                     values['3%d|1' % (j,)] = race_file.format_datetime(inter_time)

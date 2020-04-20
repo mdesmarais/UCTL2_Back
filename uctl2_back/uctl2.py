@@ -9,10 +9,11 @@ from typing import Any, List
 import aiohttp
 
 from uctl2_back import uctl2_race
-from uctl2_back.config import Config, InvalidConfigError
+from uctl2_back.config import Config
 from uctl2_back.exceptions import RaceError
 from uctl2_back.notifier import Notifier
 from uctl2_back.uctl2_setup import readRace
+from uctl2_back.utils import InvalidConfigError
 
 root_logger = logging.getLogger()
 

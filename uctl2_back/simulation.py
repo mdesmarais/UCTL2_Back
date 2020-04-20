@@ -11,7 +11,7 @@ class Simulation:
         self.simulator = simulator
         self.tick_step = tick_step
 
-        self.stages_with_times = [[set(), set()] for stage in simulator.race_stages if stage['timed']]
+        self.stages_with_times = [[set(), set()] for stage in simulator.race_stages if stage.is_timed]
         self.race_time = simulator.start_time
         self.remaining_teams = list(simulator.race_teams)
         self.running = False
@@ -29,7 +29,7 @@ class Simulation:
 
             stage_time_index = 0
             for i, stage in enumerate(self.simulator.race_stages):
-                if not stage['timed']:
+                if not stage.is_timed:
                     continue
 
                 stage_times = self.stages_with_times[stage_time_index]

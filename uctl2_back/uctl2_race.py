@@ -51,7 +51,7 @@ async def broadcastRace(race, config, notifier, session):
                 race.addTeam(team.name, team.bibNumber)
             
             # Sends the first race state (initial informations) to all connected clients
-            tasks.append(notifier.broadcastEvent(events.RACE_SETUP, race.toJSON()))
+            tasks.append(notifier.broadcastEvent(events.RACE_SETUP, race.serialize()))
 
         if state.statusChanged():
             logger.debug('New race status : %s', state.status)
@@ -98,7 +98,7 @@ async def broadcastRace(race, config, notifier, session):
 
                 lastSplitTime = teamState.splitTimes[team.currentTimeIndex]
                 # Pace computation : Xs * 1000m / segment distance (in meters)
-                averagePace = lastSplitTime * 1000 / race.stages[team.currentStage - 1]['length']
+                averagePace = lastSplitTime * 1000 / race.stages[team.currentStage - 1].length
 
                 notifier.broadcastEventLater(events.TEAM_CHECKPOINT, {
                     'bibNumber': teamState.bibNumber,
@@ -113,7 +113,7 @@ async def broadcastRace(race, config, notifier, session):
 
             if teamState.teamFinishedChanged and teamState.teamFinished:
                 # totalTime = sum of split times for timed stages only
-                totalTime = sum((x for i, x in enumerate(teamState.splitTimes) if race.stages[i]['timed']))
+                totalTime = sum((x for i, x in enumerate(teamState.splitTimes) if race.stages[i].is_timed))
                 averagePace = totalTime * 1000 / race.length
 
                 notifier.broadcastEventLater(events.TEAM_END, {

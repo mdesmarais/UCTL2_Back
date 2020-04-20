@@ -1,5 +1,6 @@
 import pytest
-from src.race_file import EMPTY_VALUE_FORMAT, STAGE_START_FORMAT, read_time, read_stage_start_times
+import sys
+from uctl2_back.race_file import EMPTY_VALUE_FORMAT, STAGE_START_FORMAT, read_time, read_stage_start_times
 
 
 def test_read_time():
