@@ -1,7 +1,7 @@
 
 class Stage:
 
-    def __init__(self, id: int, name: str, dst_from_start: int, length: int, is_timed: bool) -> 'Stage':
+    def __init__(self, id: int, name: str, dst_from_start: int, length: int, is_timed: bool) -> None:
         """
             Creates a new stage
 
@@ -10,7 +10,6 @@ class Stage:
             :param dst_from_start: distance from start (in meters)
             :param length: length of the stage (in meters)
             :param is_timed: indicates if the stage is timed or not
-            :return: a new instance of class Stage
         """
         if dst_from_start < 0:
             raise ValueError('Stage distance from start must be positive')

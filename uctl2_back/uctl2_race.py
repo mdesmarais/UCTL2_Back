@@ -4,6 +4,7 @@ import time
 
 from uctl2_back import events
 from uctl2_back.race_state import RaceState, RaceStatus, readRaceStateFromFile, readRaceStateFromUrl
+from uctl2_back.team import Team
 
 REQUESTS_DELAY = 2
 
@@ -89,7 +90,7 @@ async def broadcastRace(race, config, notifier, session):
 
         # @TODO compute those events only for a limited number of teams
         for teamState in sortedTeams:
-            team = race.teams[teamState.bibNumber]
+            team: Team = race.teams[teamState.bibNumber]
             race.updateTeam(team, teamState)
 
             if teamState.currentStageChanged and len(teamState.intermediateTimes) > 0:
@@ -122,10 +123,10 @@ async def broadcastRace(race, config, notifier, session):
                     'averagePace': averagePace
                 })
             
-            if teamState.rankChanged and team.rank < team.oldRank:
+            if teamState.rankChanged and team.rank < team.old_rank:
                 notifier.broadcastEventLater(events.TEAM_OVERTAKE, {
-                    'bibNumber': team.bibNumber,
-                    'oldRank': team.oldRank,
+                    'bibNumber': team.bib_number,
+                    'oldRank': team.old_rank,
                     'rank': team.rank,
                     'teams': computeOvertakenTeams(team, race.teams)
                 })

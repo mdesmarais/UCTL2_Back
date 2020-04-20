@@ -16,7 +16,7 @@ from uctl2_back.stage import Stage
 # Type aliases
 Point = Tuple[float, float, float]
 Points = List[Point]
-PointsWithDistance = List[Tuple[float, float, float, float]]
+PointsWithDistance = List[Tuple[float, float, float, int]]
 
 
 def compute_distances(points: Points) -> PointsWithDistance:
@@ -77,7 +77,7 @@ def extract_trackpoints(gpx: gpxpy.gpx.GPX) -> Points:
     return points
 
 
-def group_racepoints(points: PointsWithDistance, stages: List[Stage]):
+def group_racepoints(points: PointsWithDistance, stages: List[Stage]) -> List[PointsWithDistance]:
     """
         Groups racepoints by stages
 

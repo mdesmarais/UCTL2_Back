@@ -1,89 +1,137 @@
+from typing import TYPE_CHECKING, Any, Dict, List, Tuple
+
+if TYPE_CHECKING:
+    from uctl2_back.race import Race
+
 
 class Team:
 
-    def __init__(self, race, bib, name):
+    """
+        Represents a Team during a race
+
+        A team is set by a unique bib number and a name.
+    """
+
+    def __init__(self, race: 'Race', bib: int, name: str) -> None:
+        """
+            Creates a new team
+
+            :param race: an instance of the race where the team is participating
+            :param bib: bib number
+            :param name: name of the team
+        """
         self.race = race
 
-        self.bibNumber = bib
+        self.bib_number = bib
         self.name = name
-        self.oldRank = 0
+        self.old_rank: int = 0
+        self.stage_ranks: List[int] = []
+        self.pace: int = 400
 
         # Index of the current stage
-        self.currentStage = 0
-
-        self.stageRanks = []
+        self.current_stage_index: int = 0
 
         # Index of the current time (split time, intermediate time)
-        self.currentTimeIndex = -1
-        self.pace = 400
+        self.current_time_index: int = -1
 
-        self._coveredDistance = 0
-        self._progression = 0
-        self._pos = self.race.plainRacePoints[0] if len(self.race.plainRacePoints) > 0 else (0, 0)
-        self._rank = 0
+        self._covered_distance: float = 0
+        self._progression: float = 0
+        self._current_location: Tuple[float, float] = self.race.plain_racepoints[0] if len(self.race.plain_racepoints) > 0 else (0, 0)
+        self._rank: int = 0
 
     @property
-    def coveredDistance(self):
-        return self._coveredDistance
+    def covered_distance(self) -> float:
+        """ Get the covered distance (in meters) """
+        return self._covered_distance
     
-    @coveredDistance.setter
-    def coveredDistance(self, coveredDistance):
-        self._coveredDistance = coveredDistance
-        self._progression = coveredDistance / self.race.distance
+    @covered_distance.setter
+    def covered_distance(self, covered_distance: float) -> None:
+        """
+            Sets the covered distance
 
-        # racePoint = (lat, lon, alt, distance from start)
-        # plainRacePoint = (lat, lon)
+            The progression of the team will be updated as well
+            as the current_location.
+
+            :param coveredDistance: new covered distance (in meters)
+            :raises ValueError: if covered_distance is negative
+        """
+        if covered_distance < 0:
+            raise ValueError('covered distance must be positive')
+
+        self._covered_distance = covered_distance
+        self._progression = covered_distance / self.race.distance
+
+        # racepoint = (lat, lon, alt, distance from start)
+        # plain_racepoint = (lat, lon)
 
         # Computes number of racePoints from previous stages
         # If the team is in the first stage, then i equals 0
-        if self.currentStage > 0:
-            i = sum(len(self.race.racePoints[k]) for k in range(self.currentStage))
+        if self.current_stage_index > 0:
+            i = sum(len(self.race.racepoints[k]) for k in range(self.current_stage_index))
         else:
             i = 0
 
-        currentStagePoints = self.race.racePoints[self.currentStage]
+        current_stagepoints = self.race.racepoints[self.current_stage_index]
         j = 0
 
-        # Counts the number of racePoints where the team has already been
-        while j < len(currentStagePoints) and currentStagePoints[j][3] < coveredDistance:
+        # Counts the number of racepoints where the team has already been
+        while j < len(current_stagepoints) and current_stagepoints[j][3] < covered_distance:
             j += 1
 
         if j > 0:
             j -= 1
         
-        self._pos = self.race.plainRacePoints[i + j]
+        self._current_location = self.race.plain_racepoints[i + j]
 
     @property
-    def lastStageRank(self):
-        return self.stageRanks[self.currentTimeIndex]
+    def last_stage_rank(self) -> int:
+        """ Get the rank for the last stage """
+        return self.stage_ranks[self.current_time_index]
 
     @property
-    def pos(self):
-        return self._pos
+    def current_location(self) -> Tuple[float, float]:
+        """ Gets the current gps position of the team """
+        return self._current_location
 
     @property
-    def progression(self):
+    def progression(self) -> float:
+        """ Get the race progression (between 0 and 1) """
         return self._progression
 
     @property
-    def rank(self):
+    def rank(self) -> int:
+        """ Gets the rank of the team """
         return self._rank
     
     @rank.setter
     def rank(self, rank):
-        self.oldRank = self.rank
+        """
+            Sets a new rank
+
+            :param rank: new rank of the team
+            :raises ValueError: if the rank is negative or null
+        """
+        if rank <= 0:
+            raise ValueError('rank must be strictely positive')
+
+        self.old_rank = self.rank
         self._rank = rank
     
-    def serialize(self):
+    def serialize(self) -> Dict[str, Any]:
+        """
+            Serializes the instance
+
+            :return serialized instance as a dict
+        """
         return {
-            'bibNumber': self.bibNumber,
+            'bibNumber': self.bib_number,
             'name': self.name,
             'rank': self.rank,
-            'oldRank': self.oldRank,
-            'currentStage': self.currentStage if self.currentStage >= 0 else 0,
-            'coveredDistance': self.coveredDistance,
+            'oldRank': self.old_rank,
+            'currentStage': self.current_stage_index if self.current_stage_index >= 0 else 0,
+            'coveredDistance': self.covered_distance,
             'progression': self.progression,
             'pace': self.pace,
-            'pos': self.pos,
-            'stageRanks': self.stageRanks
+            'pos': self.current_location,
+            'stageRanks': self.stage_ranks
         }
