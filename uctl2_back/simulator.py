@@ -4,9 +4,9 @@ from typing import Any, Dict
 
 from flask_socketio import SocketIO
 
-import race_file
-from config import Config
-from simulation import Simulation
+from uctl2_back import race_file
+from uctl2_back.config import Config
+from uctl2_back.simulation import Simulation
 
 
 class Simulator:

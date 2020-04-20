@@ -3,7 +3,7 @@ from typing import Any, Dict
 
 import jsonschema
 
-from config_schema import CONFIG_SCHEMA
+from uctl2_back.config_schema import CONFIG_SCHEMA
 
 
 class InvalidConfigError(Exception):

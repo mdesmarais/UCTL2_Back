@@ -1,7 +1,7 @@
 import time
 
-from race_state import RaceStatus
-from team import Team
+from uctl2_back.race_state import RaceStatus
+from uctl2_back.team import Team
 
 
 class Race:

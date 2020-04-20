@@ -10,10 +10,10 @@ from typing import Any, List
 from flask import Flask
 from flask_socketio import SocketIO, emit
 
-import race_file
-import uctl2
-from config import Config
-from simulator import Simulator
+from uctl2_back import race_file, uctl2
+from uctl2_back.config import Config
+from uctl2_back.simulator import Simulator
+
 socketio = SocketIO()
 
 

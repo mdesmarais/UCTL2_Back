@@ -3,12 +3,17 @@ from typing import List, Tuple
 import gpxpy
 from haversine import haversine
 
-from config import Config
-from exceptions import RaceError
-from race import Race
+from uctl2_back.config import Config
+from uctl2_back.exceptions import RaceError
+from uctl2_back.race import Race
+
+# Type aliases
+Point = Tuple[float, float, float]
+Points = List[Point]
+PointsWithDistance = List[Tuple[float, float, float, float]]
 
 
-def compute_distances(points: List[Tuple[float, float, float]]) -> List[Tuple[float, float, float, float]]:
+def compute_distances(points: Points) -> PointsWithDistance:
     """
         Computes the distrance (in meters) from the start for each point
 
@@ -36,7 +41,7 @@ def compute_distances(points: List[Tuple[float, float, float]]) -> List[Tuple[fl
     return pointsWithDistances
 
 
-def coords_from_point(point: Tuple[float, float, float]) -> Tuple[float, float]:
+def coords_from_point(point: Point) -> Tuple[float, float]:
     """
         Returns a coord tuple base on a given point
 
@@ -49,7 +54,7 @@ def coords_from_point(point: Tuple[float, float, float]) -> Tuple[float, float]:
     return (point[0], point[1])
 
 
-def extractTrackPoints(gpxFile: gpxpy.gpx.GPX) -> List[Tuple[float, float, float]]:
+def extractTrackPoints(gpxFile: gpxpy.gpx.GPX) -> Points:
     """
         Extracts trackpoints from the given gpx
 
@@ -69,7 +74,7 @@ def extractTrackPoints(gpxFile: gpxpy.gpx.GPX) -> List[Tuple[float, float, float
     return points
 
 
-def extractTrackPointsFromGpxFile(path: str) -> List[Tuple[float, float, float]]:
+def extractTrackPointsFromGpxFile(path: str) -> Points:
     """
         Loads gpx from the given path and extracts trackpoints
 
@@ -81,6 +86,29 @@ def extractTrackPointsFromGpxFile(path: str) -> List[Tuple[float, float, float]]
     """
     with open(path, 'r') as f:
         return extractTrackPoints(gpxpy.parse(f))
+
+
+def group_racepoints(points: PointsWithDistance, config: Config):
+    racepoints_with_stages = []
+    lastRacePoint = 0
+
+    # Race points are grouped by their stage
+    for stage in config.stages:
+        # d = distance from the start at the end of the stage
+        d = stage['start'] + stage['length']
+        stagePoints = []
+
+        # rp = (lat, lon, alt, distance from start)
+        for i, rp in enumerate(points[lastRacePoint:]):
+            if rp[3] <= d:
+                stagePoints.append(rp)
+            else:
+                lastRacePoint += i - 1
+                break
+
+        racepoints_with_stages.append(stagePoints)
+    
+    return racepoints_with_stages
 
 
 def readRace(config: Config) -> Race:
@@ -96,24 +124,7 @@ def readRace(config: Config) -> Race:
     except FileNotFoundError:
         raise RaceError('File does not exist')
 
-    racePoints = compute_distances(points)
-    racePointsWithStages = []
-    lastRacePoint = 0
+    racepoints = compute_distances(points)
+    racepoints_with_stages = group_racepoints(racepoints, config)
 
-    # Race points are grouped by their stage
-    for stage in config.stages:
-        # d = distance from the start at the end of the stage
-        d = stage['start'] + stage['length']
-        stagePoints = []
-
-        # rp = (lat, lon, alt, distance from start)
-        for i, rp in enumerate(racePoints[lastRacePoint:]):
-            if rp[3] <= d:
-                stagePoints.append(rp)
-            else:
-                lastRacePoint += i - 1
-                break
-
-        racePointsWithStages.append(stagePoints)
-
-    return Race(config.raceName, racePointsWithStages, config.stages, config.tickStep)
+    return Race(config.raceName, racepoints_with_stages, config.stages, config.tickStep)

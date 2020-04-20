@@ -2,7 +2,7 @@ import datetime
 import time
 from typing import Any, Callable, List
 
-from race_file import process_file
+from uctl2_back.race_file import process_file
 
 
 class Simulation:

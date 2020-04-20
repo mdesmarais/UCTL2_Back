@@ -4,7 +4,7 @@ import logging
 
 import websockets
 
-import events as customEvent
+import uctl2_back.events as customEvent
 
 
 class Notifier:

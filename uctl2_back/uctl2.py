@@ -8,11 +8,11 @@ from typing import Any, List
 
 import aiohttp
 
-import uctl2_race
-from config import Config, InvalidConfigError
-from exceptions import RaceError
-from notifier import Notifier
-from uctl2_setup import readRace
+from uctl2_back import uctl2_race
+from uctl2_back.config import Config, InvalidConfigError
+from uctl2_back.exceptions import RaceError
+from uctl2_back.notifier import Notifier
+from uctl2_back.uctl2_setup import readRace
 
 root_logger = logging.getLogger()
 

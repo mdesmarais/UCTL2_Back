@@ -2,8 +2,8 @@ import asyncio
 import logging
 import time
 
-import events
-from race_state import RaceState, RaceStatus, readRaceStateFromFile, readRaceStateFromUrl
+from uctl2_back import events
+from uctl2_back.race_state import RaceState, RaceStatus, readRaceStateFromFile, readRaceStateFromUrl
 
 REQUESTS_DELAY = 2
 
