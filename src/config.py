@@ -1,4 +1,3 @@
-import json
 import os.path
 from typing import Any, Dict
 
@@ -39,7 +38,7 @@ class Config(dict):
 
     
     @classmethod
-    def readFromJson(cls, jsonConfig: Dict[str, Any]) -> 'Config':
+    def read_from_json(cls, json_config: Dict[str, Any]) -> 'Config':
         """
             Loads and validates the given configuration
 
@@ -51,7 +50,7 @@ class Config(dict):
             :raises InvalidConfigError: if the configuration is not valid
         """
         try:
-            jsonschema.validate(instance=jsonConfig, schema=CONFIG_SCHEMA)
+            jsonschema.validate(instance=json_config, schema=CONFIG_SCHEMA)
         except jsonschema.exceptions.ValidationError as e:
             path = e.absolute_path
             if path:
@@ -62,10 +61,10 @@ class Config(dict):
             raise IndentationError(msg)
 
         config = Config()
-        config.raceName = jsonConfig['raceName']
+        config.raceName = json_config['raceName']
 
-        config.timeCheckpoints = jsonConfig['timeCheckpoints']
-        config.stages = jsonConfig['stages']
+        config.timeCheckpoints = json_config['timeCheckpoints']
+        config.stages = json_config['stages']
 
         for i, stage in enumerate(config.stages):
             if i == 0:
@@ -75,7 +74,7 @@ class Config(dict):
 
                 stage['start'] = lastStage['start'] + lastStage['length']
 
-        routeFile = jsonConfig['routeFile']
+        routeFile = json_config['routeFile']
         if routeFile.endswith('.gpx') or routeFile.endswith('.json'):
             if os.path.isfile(routeFile):
                 config.routeFile = routeFile
@@ -84,7 +83,7 @@ class Config(dict):
         else:
             raise InvalidConfigError('Route file must have the extension .gpx or .json')
         
-        raceFile = jsonConfig['raceFile']
+        raceFile = json_config['raceFile']
         if not os.path.isfile(raceFile):
             try:
                 # Trying to create a default file if it does not exist
@@ -95,7 +94,7 @@ class Config(dict):
         
         config.raceFile = raceFile
 
-        config.teams = jsonConfig['teams']
+        config.teams = json_config['teams']
         bibs = [team['bibNumber'] for team in config.teams]
 
         # We use a set to check if all bibs are unique
@@ -107,6 +106,6 @@ class Config(dict):
         if len(bibs_under_one) > 0:
             raise InvalidConfigError('Bibs must be greater or equal to 1')
 
-        config.encoding = jsonConfig['encoding']
+        config.encoding = json_config['encoding']
         
         return config

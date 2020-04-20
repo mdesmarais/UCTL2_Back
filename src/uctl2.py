@@ -3,22 +3,21 @@ import json
 import logging
 import os.path
 import signal
-import subprocess
 import sys
-from threading import Thread
+from typing import Any, List
 
 import aiohttp
 
-import events
 import uctl2_race
 from config import Config, InvalidConfigError
+from exceptions import RaceError
 from notifier import Notifier
 from uctl2_setup import readRace
 
 root_logger = logging.getLogger()
 
 
-def createDefaultConfig(path: str) -> bool:
+def create_default_config(path: str) -> bool:
     """
         Creates a default configuration with the given path
 
@@ -58,7 +57,7 @@ def load_config(path: str) -> Config:
         with open(path, 'r') as f:
             jsonConfig = json.load(f)
 
-            config = Config.readFromJson(jsonConfig)
+            config = Config.read_from_json(jsonConfig)
         
         return config
     except FileNotFoundError:
@@ -81,17 +80,37 @@ async def main(config, race, notifier):
     await notifier.stopNotifier()
 
 
-def setup(config, handlers=[], loop=asyncio.get_event_loop()):
+def setup(config: Config, handlers: List[logging.Handler]=[], loop=asyncio.get_event_loop()) -> bool:
+    """
+        Initializes all required stuff before starting the broadcast
+
+        The root logger will use given handlers.
+        A custom loop can be set, for exemple when you want to execute
+        this function in another process, you must force the creation
+        of a new event loop.
+
+        If race informations can not be read from the given config
+        then this function will return False and the broadcast wont be started.
+
+        The function :func:`stop_broadcast` will be calledwhen the event loop receive
+        a SIGINT or SIGTERM signal. This function will stop the broadcast and
+        the notifier.
+
+        :param config: instance to the loaded config
+        :param handlers: logging handlers for all sub loggers
+        :param loop: event loop
+        :return True if the race have been correctly read from the config file, false if not
+    """
     for handler in handlers:
         root_logger.addHandler(handler)
 
     root_logger.setLevel(logging.INFO)
 
-    race = readRace(config)
-
-    if race is False:
-        root_logger.error('Unable to read race from config')
-        return
+    try:
+        race = readRace(config)
+    except RaceError as e:
+        root_logger.error(e)
+        return False
 
     notifier = Notifier(race)
 
@@ -101,8 +120,18 @@ def setup(config, handlers=[], loop=asyncio.get_event_loop()):
     loop.run_until_complete(asyncio.gather(notifier.startNotifier(5680), notifier.broadcaster(), main(config, race, notifier)))
     loop.close()
 
+    return True
 
-def stop_broadcast(*args):
+
+def stop_broadcast(*args: Any) -> None:
+    """
+        Tells the broadcast loop to stop
+
+        This function should be called when a signal
+        is received by the event loop (SIGINT, SIGTERM)
+
+        :param args: not used here
+    """
     uctl2_race.broadcast_running = False
 
 
@@ -110,7 +139,7 @@ if __name__ == '__main__':
     if len(sys.argv) == 1:
         print('Usage: uctl2.py path_to_config_file')
         configName = 'config.json'
-        if not os.path.isfile(configName) and createDefaultConfig(configName):
+        if not os.path.isfile(configName) and create_default_config(configName):
             print('A default configuration %s has been created' % (configName,))
         sys.exit(-1)
 
