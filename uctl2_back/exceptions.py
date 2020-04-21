@@ -11,3 +11,10 @@ class RaceError(Exception):
         from the config file
     """
     pass
+
+class RaceFileFieldError(Exception):
+    """
+        Exception thrown when there were an error while
+        retreiving a column from a row of a race file.
+    """
+    pass

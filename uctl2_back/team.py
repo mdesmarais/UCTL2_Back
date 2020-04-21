@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
 if TYPE_CHECKING:
     from uctl2_back.race import Race
+    from uctl2_back.team_state import TeamState
 
 
 class Team:
@@ -135,3 +136,18 @@ class Team:
             'pos': self.current_location,
             'stageRanks': self.stage_ranks
         }
+
+    def update_from_state(self, state: 'TeamState') -> None:
+        """
+            Updates team fields from a team state
+
+            A team state is computed after each reading of
+            the race file.
+
+            :param state: computed team state
+        """
+        self.rank = state.rank
+        self.current_time_index = state.current_time_index
+        self.current_stage_index = state.current_stage
+        self.covered_distance = state.covered_distance
+        self.stage_ranks = state.stage_ranks

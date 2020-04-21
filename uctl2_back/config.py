@@ -1,5 +1,5 @@
 import os.path
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 import jsonschema
 
@@ -19,11 +19,11 @@ class Config:
     """
 
     def __init__(self):
-        self.raceName = 'Unknown'
-        self.tickStep = 1
-        self.stages = []
-        self.raceFile = 'not set'
-        self.routeFile = 'not set'
+        self.race_name = 'Unknown'
+        self.tick_step = 1
+        self.stages: List[stage] = []
+        self.race_file = 'not set'
+        self.route_file = 'not set'
         self.encoding = 'utf-8'
         self.teams = []
 
@@ -51,16 +51,15 @@ class Config:
             raise IndentationError(msg)
 
         config = Config()
-        config.raceName = json_config['raceName']
+        config.race_name = json_config['raceName']
 
-        config.stages = []
-        last_stage = None
+        last_stage: Optional[Stage] = None
 
         for i, raw_stage in enumerate(json_config['stages']):
             if raw_stage['length'] <= 0:
                 raise InvalidConfigError('Stage length must be strictely positive')
 
-            if i == 0:
+            if last_stage is None:
                 dst_from_start = 0
             else:
                 dst_from_start = last_stage.dst_from_start + last_stage.length
@@ -69,25 +68,25 @@ class Config:
             last_stage = stage
             config.stages.append(stage)
 
-        routeFile = json_config['routeFile']
-        if routeFile.endswith('.gpx') or routeFile.endswith('.json'):
-            if os.path.isfile(routeFile):
-                config.routeFile = routeFile
+        route_file = json_config['routeFile']
+        if route_file.endswith('.gpx') or route_file.endswith('.json'):
+            if os.path.isfile(route_file):
+                config.route_file = route_file
             else:
                 raise InvalidConfigError('The given routeFile is not an existing file')
         else:
             raise InvalidConfigError('Route file must have the extension .gpx or .json')
         
-        raceFile = json_config['raceFile']
-        if not os.path.isfile(raceFile):
+        race_file = json_config['raceFile']
+        if not os.path.isfile(race_file):
             try:
                 # Trying to create a default file if it does not exist
-                with open(raceFile, 'w'):
+                with open(race_file, 'w'):
                     pass
             except OSError:
                 raise InvalidConfigError('Unable to create the raceFile')
         
-        config.raceFile = raceFile
+        config.race_file = race_file
 
         config.teams = json_config['teams']
         bibs = [team['bibNumber'] for team in config.teams]

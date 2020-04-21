@@ -1,11 +1,16 @@
 import csv
 import datetime
 import logging
+from typing import TYPE_CHECKING, List, Iterable, Optional
 
 import aiohttp
 
 from uctl2_back import race_file
+from uctl2_back.exceptions import RaceFileFieldError
 from uctl2_back.team_state import TeamState
+
+if TYPE_CHECKING:
+    from uctl2_back.config import Config
 
 
 class RaceStatus:
@@ -26,92 +31,91 @@ class RaceState:
         Represents a state of the race contained in a race file
     """
 
-    def __init__(self, lastState=None):
-        self.lastStatus = RaceStatus.UNKNOWN
-        self.stagesNumber = 0 if lastState is None else lastState.stagesNumber
-        self.distance = 0 if lastState is None else lastState.distance
-        self.teams = []
+    def __init__(self, last_state: Optional['RaceState']=None):
+        self.last_status = RaceStatus.UNKNOWN
+        self.stages_number: int = 0 if last_state is None else last_state.stages_number
+        self.distance: float = 0 if last_state is None else last_state.distance
+        self.teams: List[TeamState] = []
 
         # Sets default race status from the previous state (is there is one)
-        self.status = RaceStatus.UNKNOWN if lastState is None else lastState.status
+        self.status: int = RaceStatus.UNKNOWN if last_state is None else last_state.status
 
-    def statusChanged(self):
+    def status_changed(self) -> bool:
         """
             Checks if the status of the race state have changed after read the race file
 
             :return: True if the race status have changed, False if not
-            :rtype: bool
         """
-        return not self.status == self.lastStatus
+        return not self.status == self.last_status
 
-    def setStatus(self, status):
+    def set_status(self, status):
         """
             Changes the current status to another one
 
             If the new status is different than the last one, then the method statusChanged will return True.
         """
-        self.lastStatus = self.status
+        self.last_status = self.status
         self.status = status
 
 
-def readRaceState(reader, config, loopTime, lastState):
+def readRaceState(reader: Iterable[race_file.Record], config: 'Config', loop_time: float, last_state: Optional[RaceState]):
     """
         Extracts the state of the race from the given DictReader
 
         If a line contains invalid data, then it is skipped.
 
         :param reader: lines of the race file
-        :ptype reader: DictReader
-        :param loopTime: elapsed time in seconds since the last call to this function
-        :ptype looTime: int
-        :param lastState: last state of the race, could be None
-        :ptype lastState: RaceState
+        :param loop_time: elapsed time in seconds since the last call to this function
+        :param last_state: last state of the race, could be None
         :return: the current state of the race
         :rtype: RaceState
     """
     logger = logging.getLogger(__name__)
 
-    raceState = RaceState(lastState)
+    race_state = RaceState(last_state)
 
-    raceStarted = False
-    raceFinished = True
+    race_started = False
+    race_finished = True
 
     index = 0
 
     for index, record in enumerate(reader):
-        if lastState is None:
-            raceState.stagesNumber = race_file.computeCheckpointsNumber(record)
-            raceState.distance = race_file.getFloat(record, race_file.DISTANCE_FORMAT)
+        if last_state is None:
+            race_state.stages_number = race_file.computeCheckpointsNumber(record)
 
-            if raceState.distance is None:
-                logger.error('Could not get race length')
+            try:
+                race_state.distance = race_file.get_key(record, race_file.DISTANCE_FORMAT, convert=float)
+            except RaceFileFieldError as e:
+                logger.error(e)
 
-        bibNumber = race_file.getInt(record, race_file.BIB_NUMBER_FORMAT)
-        if bibNumber is None:
-            logger.error('Bib number error')
+        try:
+            bib_number: int = race_file.get_key(record, race_file.BIB_NUMBER_FORMAT, convert=int)
+        except RaceFileFieldError as e:
+            logger.error('Bib error : ', e)
             continue
         
-        splitTimes = race_file.read_split_times(record)
-        stagesRank = race_file.read_stage_ranks(record)
+        split_times = race_file.read_split_times(record)
+        stages_rank = race_file.read_stage_ranks(record)
 
         started_stage_times = race_file.read_stage_start_times(record)
         ended_stage_times = race_file.read_stage_end_times(record)
 
-        teamStarted = len(started_stage_times) > 0
-        teamFinished = len(ended_stage_times) == raceState.stagesNumber
+        team_started = len(started_stage_times) > 0
+        team_finished = len(ended_stage_times) == race_state.stages_number
 
         # Computes race state based on team state
-        if teamStarted:
-            raceStarted = True
+        if team_started:
+            race_started = True
         
-        if not teamFinished:
-            raceFinished = False
+        if not team_finished:
+            race_finished = False
 
-        if teamFinished:
-            currentStage = len(config.stages) - 1
+        if team_finished:
+            current_stage = len(config.stages) - 1
         elif len(ended_stage_times) == 0:
-            currentStage = 0
+            current_stage = 0
         else:
+            # TODO
             i, j = (0, 0)
             for stage in config.stages:
                 if i >= len(ended_stage_times):
@@ -122,11 +126,12 @@ def readRaceState(reader, config, loopTime, lastState):
                 
                 j += 1
             
-            currentStage = j if len(started_stage_times) == len(ended_stage_times) else j + 1
+            current_stage = j if len(started_stage_times) == len(ended_stage_times) else j + 1
 
-        startTime = started_stage_times[0] if teamStarted else None
-        currentTimeIndex = currentStage - 1
+        start_time = started_stage_times[0] if team_started else None
+        current_time_index = current_stage - 1
 
+        # todo
         i, j, k = (0, 0, 0)
         for stage in config.stages:
             if stage.is_timed:
@@ -139,87 +144,74 @@ def readRaceState(reader, config, loopTime, lastState):
 
             real_i = i
             split_time = int((started_stage_times[i] - ended_stage_times[i - 1]).total_seconds())
-            splitTimes.insert(i, split_time)
+            split_times.insert(i, split_time)
 
             inter_time = started_stage_times[i]
             ended_stage_times.insert(i + k, inter_time)
-            stagesRank.insert(i + k, 0)
+            stages_rank.insert(i + k, 0)
             k += 1
 
             j += 1
 
         try:
-            if lastState is not None:
-                lastTeamState = lastState.teams[index]
+            if last_state is not None:
+                last_team_state: Optional[TeamState] = last_state.teams[index]
             else:
-                lastTeamState = None
+                last_team_state = None
         except ValueError:
-            lastTeamState = None
+            last_team_state = None
 
-        intermediateTimes = list(ended_stage_times)
-        currentTimeIndex = 0 if len(ended_stage_times) == 0 else currentStage - 1
+        intermediate_times = list(ended_stage_times)
+        current_time_index = 0 if len(ended_stage_times) == 0 else current_stage - 1
 
         # Creates a new team state for each team in the file
-        # The name of the team if set if the column TEAM_NAME_FORMAT
-        teamState = TeamState(bibNumber, record[race_file.TEAM_NAME_FORMAT], lastTeamState)
-        teamState.currentTimeIndex = currentTimeIndex
-        teamState.currentStage = currentStage
-        teamState.intermediateTimes = intermediateTimes
-        teamState.splitTimes = splitTimes
-        teamState.startTime = startTime
-        teamState.stageRanks = stagesRank
-        teamState.teamFinished = teamFinished
+        team_state = TeamState(bib_number, record[race_file.TEAM_NAME_FORMAT], last_team_state)
+        team_state.current_time_index = current_time_index
+        team_state.current_stage = current_stage
+        team_state.intermediate_times = intermediate_times
+        team_state.split_times = split_times
+        team_state.start_time = start_time
+        team_state.stage_ranks = stages_rank
+        team_state.team_finished = team_finished
 
-        if len(splitTimes) > 0:
+        if len(split_times) > 0:
             # Computing the covered distance since the last loop (step distance)
-            if teamFinished:
-                lastStage = config.stages[currentStage - 1]
-                teamState.coveredDistance = lastStage.dst_from_start + lastStage.lenght
-            elif teamState.currentStageChanged:
-                """stageDistanceFromStart = config.stages[currentStage]['start']
-
-                aa = datetime.datetime.now() - (teamState.realStartTime - teamState.startTime)
-
-                raceTime = (aa - startTime) * config.tickStep
-                raceDateTime = startTime + raceTime
-                timeSinceStageStarted = (raceDateTime - intermediateTimes[currentTimeIndex]).total_seconds()
-                elapsedTime = (intermediateTimes[currentTimeIndex] - startTime)
-                print(timeSinceStageStarted, elapsedTime)
-                averageSpeed = stageDistanceFromStart / elapsedTime.total_seconds()
-                
-                teamState.coveredDistance = stageDistanceFromStart + averageSpeed * timeSinceStageStarted"""
-                teamState.coveredDistance = config.stages[currentStage]['start']
+            if team_finished:
+                lastStage = config.stages[current_stage - 1]
+                team_state.covered_distance = lastStage.dst_from_start + lastStage.lenght
+            elif team_state.current_stage_changed:
+                team_state.covered_distance = config.stages[current_stage]['start']
             else:
-                stageDistanceFromStart = config.stages[currentStage]['start']
+                stage_dst_from_start = config.stages[current_stage]['start']
 
-                if stageDistanceFromStart > 0:
-                    if splitTimes[currentTimeIndex] > 0:
-                        elapsedTime = intermediateTimes[currentTimeIndex] - startTime
-                        averageSpeed = stageDistanceFromStart / elapsedTime.total_seconds()
-                    teamState.coveredDistance += averageSpeed * loopTime * config.tickStep
-        elif not raceState.status == RaceStatus.RUNNING:
-            teamState.coveredDistance = 0
+                if stage_dst_from_start > 0 and start_time:
+                    if split_times[current_time_index] > 0:
+                        elapsed_time = intermediate_times[current_time_index] - start_time
+                        average_speed = stage_dst_from_start / elapsed_time.total_seconds()
+                    team_state.covered_distance += average_speed * loop_time * config.tick_step
+        elif not race_state.status == RaceStatus.RUNNING:
+            team_state.covered_distance = 0
         else:
             # Default pace when we don't known each team's pace yet
-            teamState.coveredDistance += 2.5 * loopTime * config.tickStep
+            team_state.covered_distance += 2.5 * loop_time * config.tick_step
 
-        raceState.teams.append(teamState)
+        race_state.teams.append(team_state)
 
     if index == 0:
         return None
     
     # Updating the status of the race for the current state
-    if not raceStarted:
-        raceState.setStatus(RaceStatus.WAITING)
-    elif not raceFinished:
-        raceState.setStatus(RaceStatus.RUNNING)
+    if not race_started:
+        race_state.set_status(RaceStatus.WAITING)
+    elif not race_finished:
+        race_state.set_status(RaceStatus.RUNNING)
     else:
-        raceState.setStatus(RaceStatus.FINISHED)
+        race_state.set_status(RaceStatus.FINISHED)
 
-    return raceState
+    return race_state
 
 
-def readRaceStateFromFile(filePath, config, loopTime, lastState):
+def read_race_state_from_file(file_path: str, config: 'Config', loop_time: float, last_state: Optional[RaceState]) -> RaceState:
     """
         Extracts the current state of the race from the given race file
 
@@ -227,29 +219,19 @@ def readRaceStateFromFile(filePath, config, loopTime, lastState):
         If the given file can not be read then None is returned.
         If a line contains invalid data, then it is skipped.
 
-        :param filePath: path to the file that contains race data
-        :ptype filePath: str
-        :param loopTime: elapsed time in seconds since the last call to this function
-        :ptype loopTime: int
-        :param lastState: last state of the race, could be None
-        :ptype lastState: RaceState
+        :param file_path: path to the file that contains race data
+        :param loop_time: elapsed time in seconds since the last call to this function
+        :param last_state: last state of the race, could be None
         :return: a state contained in the race file
-        :rtype: RaceState
+        :raises FileNotFoundError: if the given file does not exist
+        :raises IOError: if an error occured while reading the file
     """
-    logger = logging.getLogger(__name__)
+    with open(config.race_file, 'r', encoding=config.encoding) as raceFile:
+        reader = csv.DictReader(raceFile, delimiter='\t')
+        return readRaceState(reader, config, loop_time, last_state)
 
-    raceState = None
 
-    try:
-        with open(config.raceFile, 'r', encoding=config.encoding) as raceFile:
-            reader = csv.DictReader(raceFile, delimiter='\t')
-            raceState = readRaceState(reader, config, loopTime, lastState)
-    except IOError as e:
-        logger.error('IOError : %s', e)
-    
-    return raceState
-
-async def readRaceStateFromUrl(filePath, config, loopTime, lastState, session, url):
+async def read_race_state_from_url(file_path: str, config: 'Config', loop_time: float, last_state: Optional[RaceState], session: aiohttp.ClientSession, url: str) -> RaceState:
     """
         Extracts the current state of the race from the given race file
 
@@ -257,22 +239,15 @@ async def readRaceStateFromUrl(filePath, config, loopTime, lastState, session, u
         If the given file can not be read then None is returned.
         If a line contains invalid data, then it is skipped.
 
-        :param filePath: path to the file that contains race data
-        :ptype filePath: str
-        :param loopTime: elapsed time in seconds since the last call to this function
-        :ptype loopTime: int
-        :param lastState: last state of the race, could be None
-        :ptype lastState: RaceState
+        :param file_path: path to the file that contains race data
+        :param loop_time: elapsed time in seconds since the last call to this function
+        :param last_state: last state of the race, could be None
         :param session: async http session
-        :ptype session: aiohttp.ClientSession
         :param url: url of the race file
-        :ptype url: str
         :return: a state contained in the race file
-        :rtype: RaceState
+        :raises IOError: if an error occurend while reading the file
     """
     logger = logging.getLogger(__name__)
-
-    raceState = None
 
     try:
         async with session.get(url) as r:
@@ -280,10 +255,6 @@ async def readRaceStateFromUrl(filePath, config, loopTime, lastState, session, u
             print('file downloaded')
         reader = csv.DictReader(content.split('\n'), delimiter='\t')
 
-        raceState = readRaceState(reader, config, loopTime, lastState)
-    except IOError as e:
-        logger.error('IOError : %s', e)
+        return readRaceState(reader, config, loop_time, last_state)
     except aiohttp.client_exceptions.ServerDisconnectedError:
-        return await readRaceStateFromUrl(filePath, config, loopTime, lastState, session, url)
-    
-    return raceState
+        return await read_race_state_from_url(file_path, config, loop_time, last_state, session, url)

@@ -167,7 +167,7 @@ if __name__ == '__main__':
     if len(sys.argv) == 1:
         print('Usage: uctl2.py path_to_config_file')
         configName = 'config.json'
-        if not os.path.isfile(configName) and createDefaultConfig(configName):
+        if not os.path.isfile(configName) and uctl2.create_default_config(configName):
             print('A default configuration %s has been created' % (configName,))
         sys.exit(-1)
 

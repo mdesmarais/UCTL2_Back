@@ -1,8 +1,11 @@
 import datetime
 import time
-from typing import Any, Callable, List
+from typing import TYPE_CHECKING, Any, Callable, List, Set, Tuple
 
 from uctl2_back.race_file import process_file
+
+if TYPE_CHECKING:
+    from uctl2_back.simulator import Simulator
 
 
 class Simulation:
@@ -11,7 +14,7 @@ class Simulation:
         self.simulator = simulator
         self.tick_step = tick_step
 
-        self.stages_with_times = [[set(), set()] for stage in simulator.race_stages if stage.is_timed]
+        self.stages_with_times: List[Tuple[Set[int], Set[int]]] = [(set(), set()) for stage in simulator.race_stages if stage.is_timed]
         self.race_time = simulator.start_time
         self.remaining_teams = list(simulator.race_teams)
         self.running = False

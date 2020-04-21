@@ -119,7 +119,7 @@ def readRace(config: Config) -> Race:
         :raises RaceError: if race informations can not be read from the given config
     """
     try:
-        with open(config.routeFile, 'r') as fIn:
+        with open(config.route_file, 'r') as fIn:
             gpx = gpxpy.parse(fIn)
             points = extract_trackpoints(gpx)
     except FileNotFoundError:
@@ -130,4 +130,4 @@ def readRace(config: Config) -> Race:
     racepoints = compute_distances(points)
     racepoints_with_stages = group_racepoints(racepoints, config.stages)
 
-    return Race(config.raceName, racepoints_with_stages, config.stages, config.tickStep)
+    return Race(config.race_name, racepoints_with_stages, config.stages, config.tick_step)

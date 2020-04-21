@@ -1,12 +1,15 @@
 import datetime
 import random
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from flask_socketio import SocketIO
 
 from uctl2_back import race_file
 from uctl2_back.config import Config
 from uctl2_back.simulation import Simulation
+
+if TYPE_CHECKING:
+    from uctl2_back.stage import Stage
 
 
 class Simulator:
@@ -25,17 +28,17 @@ class Simulator:
         """
         self.socketio = socketio
         self.headers = ['Numéro', 'Nom', 'Distance']
-        self.rows = {}
-        self.stages_inter_times = []
+        self.rows: Dict[str, Any] = {}
+        self.stages_inter_times: List[List[datetime.datetime]] = []
         self.race_file = ''
 
         self.race_distance = 0
         self.race_name = ''
-        self.race_stages = []
-        self.race_teams = []
-        self.start_time = None
+        self.race_stages: List['Stage'] = []
+        self.race_teams: List[Any] = []
+        self.start_time: datetime.datetime = datetime.datetime.now()
 
-        self._simulation = None
+        self._simulation: Optional[Simulation] = None
 
     @classmethod
     def create(cls, config: Config, socketio: SocketIO) -> 'Simulator':
@@ -62,10 +65,10 @@ class Simulator:
             sim.headers.extend(race_file.stage_columns(j))
             j += 1
 
-        sim.race_file = config.raceFile
+        sim.race_file = config.race_file
 
         sim.race_distance = distance
-        sim.race_name = config.raceName
+        sim.race_name = config.race_name
         sim.race_stages = list(config.stages)
         sim.race_teams = list(config.teams)
         sim.start_time = datetime.datetime.now()
@@ -78,7 +81,7 @@ class Simulator:
 
             Each call to this method will result of new simulated times.
         """
-        stages_times = [[] for x in range(len(self.race_stages))]
+        stages_times: List[List[Tuple[int, int]]] = [[] for x in range(len(self.race_stages))]
         self.stages_inter_times = [[] for x in range(len(self.race_stages))]
 
         for team in self.race_teams:
@@ -114,7 +117,7 @@ class Simulator:
         # Computes teams rank for each stages
         j = 1
         for i, stage_times in enumerate(stages_times_sorted):
-            if not self.race_stages[i]['timed']:
+            if not self.race_stages[i].is_timed:
                 continue
 
             for rank, stage_time in enumerate(stage_times):
@@ -122,30 +125,6 @@ class Simulator:
 
                 self.rows[bib]['Clt Interm-1 (S%d)' % (j,)] = rank + 1
             j += 1
-
-    @classmethod
-    def from_json(self, obj: dict, socketio: SocketIO) -> 'Simulator':
-        """
-            Loads a serialized instance of the class from a dict
-
-            :param obj: contains serialized attributes
-            :param socketio: instance of a socketio server
-            :return: an instance of the class Simulator with its restored attributes
-            :raises KeyError: if an attribute is missing in the given obj
-        """
-        sim = Simulator(socketio)
-        sim.headers = list(obj['headers'])
-        sim.rows = list(obj['rows'])
-        sim.stages_inter_times = [
-            [datetime.datetime.fromtimestamp(inter_time) for inter_time in inter_times] 
-            for inter_times in obj['stages_inter_times']]
-
-        sim.race_distance = obj['race_distance']
-        sim.race_stages = list(obj['stages'])
-        sim.race_teams = list(obj['teams'])
-        sim.start_time = datetime.datetime.fromtimestamp(obj['start_time'])
-
-        return sim
 
     def get_simulation(self, tick_step: int) -> Simulation:
         """
@@ -228,7 +207,7 @@ class Simulator:
             'race_name': self.race_name,
             'race_stages': list(self.race_stages),
             'race_teams': list(self.race_teams),
-            'start_time': self.start_time.timestamp()
+            'start_time': self.start_time.timestamp() if self.start_time else 0
         }
 
 
