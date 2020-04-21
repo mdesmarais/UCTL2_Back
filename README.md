@@ -1,9 +1,16 @@
-# UCTL 2 stats
+# UCTL 2 Back
 
-- Initialisation d'une course avec son tracé dans une base de données
-- Lancement de la simulation d'une course via le simulateur
-- Réalisation de calculs sur les données de la course en direct
-- Notification d'évènements via un serveur de websockets
+Cette application est composée de deux programmes :
+
+* Broadcaster
+    * Initialisation d'une course avec son tracé dans une base de données
+    * Lancement de la simulation d'une course via le simulateur
+    * Réalisation de calculs sur les données de la course en direct
+    * Notification d'évènements via un serveur de websockets
+* Manager
+  * Interface web permettant de controler un simulateur
+  * Génération manuelle du fichier de course
+  * Possibilité de modifier la vitesse de la simulation en live
 
 ## Pré-requis
 
@@ -15,12 +22,15 @@ Nous conseillons l'utilisation d'un environnement virtuel pour faciliter l'insta
 
 ## Utilisation
 
-`python src/uctl2.py config_path`
+Lancement du broadcaster :  `python uctl2_back/uctl2.py config_path`  
+Lancement du manager : `python uctl2_back/manager.py config_path`
 
-Le programme attend en paramètre un chemin vers un fichier de configuration. Si aucun  chemin n'est passé, un fichier `config.json `contenant une configuration initiale sera créée dans le dossier courant.
+Le programme attend en paramètre un chemin vers un fichier de configuration. Si aucun chemin n'est passé, un fichier `config.json `contenant une configuration initiale sera créée dans le dossier courant.  
+
+Un exemple de configuration est disponible dans le fichier [samples/config.json](samples/config.json). Il est fourni avec un fichier gpx contenant le tracé de la course Univercity Trail 2020.
 
 ## Configuration
 
 La configuration doit être stockée dans un fichier au format json.
 
-Une description des champs requis dans le fichier est disponible ici : [src/config_schema.py](src/config_schema.py). Ce lien pointe vers un fichier json qui respecte le format [JSON Schema](https://json-schema.org/). Ce dernier permet de vérifier automatiquement que la configuration fournie par l'utilisateur est valide.
+Une description des champs requis dans le fichier est disponible ici : [uctl2_back/config_schema.py](src/config_schema.py). Ce lien pointe vers un fichier json qui respecte le format [JSON Schema](https://json-schema.org/). Ce dernier permet de vérifier automatiquement que la configuration fournie par l'utilisateur respecte le format attendu
