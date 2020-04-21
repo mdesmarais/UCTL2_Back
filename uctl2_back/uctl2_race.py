@@ -95,14 +95,14 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
 
         for rank, team_state in enumerate(sorted_team_states):
             # Updates rank
-            team_state.rank = rank + 1
+            team_state.rank.set_value(rank + 1)
 
         # @TODO compute those events only for a limited number of teams
         for team_state in sorted_team_states:
             team = race.teams[team_state.bib_number]
             team.update_from_state(team_state)
 
-            if team_state.current_stage_changed and len(team_state.intermediate_times) > 0 and not team_state.start_time is None:
+            if team_state.current_stage.has_changed and len(team_state.intermediate_times) > 0 and not team_state.start_time is None:
                 elapsed_time = team_state.intermediate_times[team.current_time_index] - team_state.start_time
                 team.pace = int(elapsed_time.total_seconds() * 1000 / team.covered_distance)
 
@@ -121,7 +121,7 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
                     'stageRank': team.last_stage_rank
                 })
 
-            if team_state.team_finished_changed and team_state.team_finished:
+            if team_state.team_finished.has_changed and team_state.team_finished:
                 # totalTime = sum of split times for timed stages only
                 total_time = sum((x for i, x in enumerate(team_state.split_times) if race.stages[i].is_timed))
                 average_pace = total_time * 1000 / race.length
@@ -132,7 +132,7 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
                     'averagePace': average_pace
                 })
             
-            if team_state.rank_changed and team.rank < team.old_rank:
+            if team_state.rank.has_changed and team.rank < team.old_rank:
                 notifier.broadcastEventLater(events.TEAM_OVERTAKE, {
                     'bibNumber': team.bib_number,
                     'oldRank': team.old_rank,

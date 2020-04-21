@@ -167,19 +167,19 @@ def readRaceState(reader: Iterable[race_file.Record], config: 'Config', loop_tim
         # Creates a new team state for each team in the file
         team_state = TeamState(bib_number, record[race_file.TEAM_NAME_FORMAT], last_team_state)
         team_state.current_time_index = current_time_index
-        team_state.current_stage = current_stage
+        team_state.current_stage.set_value(current_stage)
         team_state.intermediate_times = intermediate_times
         team_state.split_times = split_times
         team_state.start_time = start_time
         team_state.stage_ranks = stages_rank
-        team_state.team_finished = team_finished
+        team_state.team_finished.set_value(team_finished)
 
         if len(split_times) > 0:
             # Computing the covered distance since the last loop (step distance)
             if team_finished:
                 lastStage = config.stages[current_stage - 1]
                 team_state.covered_distance = lastStage.dst_from_start + lastStage.lenght
-            elif team_state.current_stage_changed:
+            elif team_state.current_stage.has_changed:
                 team_state.covered_distance = config.stages[current_stage]['start']
             else:
                 stage_dst_from_start = config.stages[current_stage]['start']

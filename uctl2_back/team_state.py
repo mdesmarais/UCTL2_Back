@@ -1,19 +1,11 @@
 import json
 from typing import TYPE_CHECKING, List, Optional
 
+from uctl2_back.watched_property import WatchedProperty
+
 if TYPE_CHECKING:
     from datetime import datetime
 
-
-def stateProperty(attr, status):
-    def wrap(func):
-        def wrapper(*args, **kwargs):
-            func(*args)
-            lastState = getattr(args[0], 'lastState')
-            if lastState is not None and not getattr(lastState, attr) == getattr(args[0], attr):
-                setattr(args[0], status, True)
-        return wrapper
-    return wrap
 
 class TeamState:
 
@@ -36,9 +28,9 @@ class TeamState:
         self.name = name
         self.lastState = last_state
 
-        self._current_stage = -1
-        self._rank = 0
-        self._team_finished = False
+        self.current_stage = WatchedProperty(-1)
+        self.rank = WatchedProperty(0)
+        self.team_finished = WatchedProperty(False)
 
         self.start_time: Optional[datetime] = None
         self.covered_distance: float = 0 if last_state is None else last_state.covered_distance
@@ -47,37 +39,3 @@ class TeamState:
         self.stage_ranks: List[int] = []
         self.current_time_index = -1
 
-        self.current_stage_changed = False
-        self.rank_changed = False
-        self.team_finished_changed = False
-
-    @property
-    def current_stage(self):
-        return self._current_stage
-    
-    @current_stage.setter
-    @stateProperty('current_stage', 'current_stage_changed')
-    def current_stage(self, current_stage):
-        self._current_stage = current_stage
-    
-    @property
-    def rank(self):
-        return self._rank
-
-    @rank.setter
-    @stateProperty('rank', 'rank_changed')
-    def rank(self, rank):
-        b = self._rank == 0
-        self._rank = rank
-
-        if b:
-            self.rank_changed = False
-    
-    @property
-    def team_finished(self):
-        return self._team_finished
-
-    @team_finished.setter
-    @stateProperty('team_finished', 'team_finished_changed')
-    def team_finished(self, team_finished):
-        self._team_finished = team_finished

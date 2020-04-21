@@ -146,8 +146,8 @@ class Team:
 
             :param state: computed team state
         """
-        self.rank = state.rank
+        self.rank = state.rank.get_value()
         self.current_time_index = state.current_time_index
-        self.current_stage_index = state.current_stage
+        self.current_stage_index = state.current_stage.get_value()
         self.covered_distance = state.covered_distance
         self.stage_ranks = state.stage_ranks
