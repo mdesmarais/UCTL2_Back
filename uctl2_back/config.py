@@ -3,8 +3,8 @@ from typing import Any, Dict
 
 import jsonschema
 
-from uctl2_back.exceptions import InvalidConfigError
 from uctl2_back.config_schema import CONFIG_SCHEMA
+from uctl2_back.exceptions import InvalidConfigError
 from uctl2_back.stage import Stage
 
 
@@ -21,7 +21,6 @@ class Config:
     def __init__(self):
         self.raceName = 'Unknown'
         self.tickStep = 1
-        self.timeCheckpoints = []
         self.stages = []
         self.raceFile = 'not set'
         self.routeFile = 'not set'
@@ -53,8 +52,6 @@ class Config:
 
         config = Config()
         config.raceName = json_config['raceName']
-
-        config.timeCheckpoints = json_config['timeCheckpoints']
 
         config.stages = []
         last_stage = None

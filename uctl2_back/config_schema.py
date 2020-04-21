@@ -3,7 +3,7 @@ CONFIG_SCHEMA = {
     'type': 'object',
     'required': [
         'raceName', 'routeFile', 'raceFile', 'stages', 
-        'timeCheckpoints', 'teams', 'encoding'
+        'teams', 'encoding'
     ],
     'properties': {
         'raceName': {
@@ -41,13 +41,6 @@ CONFIG_SCHEMA = {
                         'type': 'boolean'
                     }
                 }
-            }
-        },
-        'timeCheckpoints': {
-            'title': 'Liste de points de chronométrages au milieu des sections',
-            'type': 'array',
-            'items': {
-                'type': 'integer'
             }
         },
         'teams': {
