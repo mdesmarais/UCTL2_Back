@@ -28,9 +28,9 @@ class TeamState:
         self.name = name
         self.lastState = last_state
 
-        self.current_stage = WatchedProperty(None)
+        self.current_stage: WatchedProperty = last_state.current_stage if last_state else WatchedProperty(None)
         self.rank = WatchedProperty(0)
-        self.team_finished = WatchedProperty(False)
+        self.team_finished: WatchedProperty = WatchedProperty(last_state.team_finished.get_value() if last_state else False)
 
         self.start_time: Optional[datetime] = None
         self.covered_distance: float = 0 if last_state is None else last_state.covered_distance

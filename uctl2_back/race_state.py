@@ -221,7 +221,7 @@ def read_race_state(reader: Iterable[race_file.Record], config: 'Config', loop_t
     race_finished = True
 
     for index, record in enumerate(reader):
-        if last_state is None:
+        if last_state is None and index == 0:
             race_state.stages_number = race_file.computeCheckpointsNumber(record)
 
             try:
@@ -290,7 +290,7 @@ def read_race_state(reader: Iterable[race_file.Record], config: 'Config', loop_t
 
         race_state.teams.append(team_state)
 
-    if index == 0:
+    if len(race_state.teams) == 0:
         raise RaceEmptyError('coup dur')
     
     # Updating the status of the race for the current state

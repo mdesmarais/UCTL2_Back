@@ -71,13 +71,13 @@ def load_config(path: str) -> Config:
         raise
 
 
-async def main(config, race, notifier): 
+async def main(config, race, notifier: Notifier): 
     # Starting the race file broadcasting
     uctl2_race.broadcast_running = True
     async with aiohttp.ClientSession() as session:
         await uctl2_race.broadcastRace(race, config, notifier, session)
 
-    await notifier.stopNotifier()
+    await notifier.stop_notifier()
 
 
 def setup(config: Config, handlers: List[logging.Handler]=[], loop=asyncio.get_event_loop()) -> bool:
@@ -117,7 +117,7 @@ def setup(config: Config, handlers: List[logging.Handler]=[], loop=asyncio.get_e
     loop.add_signal_handler(signal.SIGINT, stop_broadcast)
     loop.add_signal_handler(signal.SIGTERM, stop_broadcast)
 
-    loop.run_until_complete(asyncio.gather(notifier.startNotifier(5680), notifier.broadcaster(), main(config, race, notifier)))
+    loop.run_until_complete(asyncio.gather(notifier.start_notifier(5680), notifier.broadcaster(), main(config, race, notifier)))
     loop.close()
 
     return True

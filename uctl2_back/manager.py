@@ -5,7 +5,7 @@ import os
 import signal
 import sys
 from multiprocessing import Process
-from typing import Any, List
+from typing import TYPE_CHECKING, Any, Dict, List
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
@@ -13,6 +13,9 @@ from flask_socketio import SocketIO, emit
 from uctl2_back import race_file, uctl2
 from uctl2_back.config import Config
 from uctl2_back.simulator import Simulator
+
+if TYPE_CHECKING:
+    from uctl2_back.stage import Stage
 
 socketio = SocketIO()
 
@@ -36,7 +39,7 @@ def start_broadcast(config: Config) -> None:
     uctl2.setup(config, handlers=[handler], loop=loop)
 
 
-def update_racefile_thread(sim: Simulator, stages: List[Any]) -> None:
+def update_racefile_thread(sim: Simulator, stages: List['Stage']) -> None:
     """
         Updates the race file with the selected stages for each teams
 
@@ -51,7 +54,7 @@ def update_racefile_thread(sim: Simulator, stages: List[Any]) -> None:
     }, broadcast=True)
 
 
-def create_app(config, pid) -> Flask:
+def create_app(config: Config, pid: int) -> Flask:
     """
         Creates a new Flask app
 
@@ -77,7 +80,7 @@ def create_app(config, pid) -> Flask:
         start_simulation(on_file_updated, on_race_finished)
 
     def start_simulation(on_file_updated, on_race_finished):
-        simulation = sim.get_simulation(config.tickStep)
+        simulation = sim.get_simulation(config.tick_step)
         socketio.start_background_task(simulation.run, on_file_updated=on_file_updated, on_race_finished=on_race_finished)
         sim.notify_simulation_status()
 
@@ -95,7 +98,7 @@ def create_app(config, pid) -> Flask:
         emit('initialize', sim.to_json())
 
     @socketio.on('toggle_sim')
-    def toggle_sim(data):
+    def toggle_sim(data: Dict[str, Any]):
         """
             Starts / stops the simulation according to
             its current status
@@ -121,11 +124,11 @@ def create_app(config, pid) -> Flask:
             sim.stop_simulation()
             sim.notify_simulation_status()
         else:
-            if config.tickStep == tick_step:
+            if config.tick_step == tick_step:
                 start_simulation(on_file_updated=lambda rows: socketio.emit('racefile', {'rows': rows}), 
                     on_race_finished=sim.notify_simulation_status)
             else:
-                config.tickStep = tick_step
+                config.tick_step = tick_step
                 socketio.start_background_task(restart_broadcast, on_file_updated=lambda rows: socketio.emit('racefile', {'rows': rows}),
                     on_race_finished=sim.notify_simulation_status)
 
@@ -142,7 +145,7 @@ def create_app(config, pid) -> Flask:
         sim.notify_simulation_status()
 
     @socketio.on('update_racefile')
-    def update_racefile(data):
+    def update_racefile(data: Dict[str, Any]):
         """
             This event is emitted by the client when he wants
             to update the race file with some selected stages.
@@ -179,6 +182,9 @@ if __name__ == '__main__':
 
     p = Process(target=start_broadcast, args=(config,))
     p.start()
+
+    if not p.pid:
+        sys.exit(-1)
 
     app = create_app(config, p.pid)
     socketio.run(app)

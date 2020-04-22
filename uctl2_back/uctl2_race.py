@@ -40,8 +40,8 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
         except IOError as e:
             logger.error(e)
             break
-        except Exception:
-            logger.info('Waiting for race')
+        except Exception as e:
+            logger.info('Waiting for race', e)
             await asyncio.sleep(REQUESTS_DELAY)
             continue
 
@@ -61,7 +61,7 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
                 race.add_team(team_state.bib_number, team_state.name)
             
             # Sends the first race state (initial informations) to all connected clients
-            tasks.append(notifier.broadcastEvent(events.RACE_SETUP, race.serialize()))
+            tasks.append(asyncio.ensure_future(notifier.broadcast_event(events.RACE_SETUP, race.serialize())))
 
         if state.status.has_changed:
             logger.debug('New race status : %s', state.status)
@@ -78,7 +78,7 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
                 'tickStep': config.tick_step
             }
 
-            tasks.append(asyncio.ensure_future(notifier.broadcastEvent(events.RACE_STATUS, event)))
+            tasks.append(asyncio.ensure_future(notifier.broadcast_event(events.RACE_STATUS, event)))
 
             if state.status == RaceStatus.WAITING:
                 race.reset_teams()
@@ -103,6 +103,7 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
             team.update_from_state(team_state)
 
             if team_state.current_stage.has_changed and len(team_state.intermediate_times) > 0 and not team_state.start_time is None:
+                print('POUET')
                 elapsed_time = team_state.intermediate_times[team.current_time_index] - team_state.start_time
                 team.pace = int(elapsed_time.total_seconds() * 1000 / team.covered_distance)
 
@@ -110,7 +111,7 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
                 # Pace computation : Xs * 1000m / segment distance (in meters)
                 average_pace = last_split_time * 1000 / race.stages[team.current_stage_index - 1].length
 
-                notifier.broadcastEventLater(events.TEAM_CHECKPOINT, {
+                notifier.broadcast_event_later(events.TEAM_CHECKPOINT, {
                     'bibNumber': team_state.bib_number,
                     'currentStage': team.current_stage_index,
                     'lastStage': team.current_stage_index - 1,
@@ -126,21 +127,21 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
                 total_time = sum((x for i, x in enumerate(team_state.split_times) if race.stages[i].is_timed))
                 average_pace = total_time * 1000 / race.length
 
-                notifier.broadcastEventLater(events.TEAM_END, {
+                notifier.broadcast_event_later(events.TEAM_END, {
                     'bibNumber': team_state.bib_number,
                     'totalTime': total_time,
                     'averagePace': average_pace
                 })
             
             if team_state.rank.has_changed and team.rank < team.old_rank:
-                notifier.broadcastEventLater(events.TEAM_OVERTAKE, {
+                notifier.broadcast_event_later(events.TEAM_OVERTAKE, {
                     'bibNumber': team.bib_number,
                     'oldRank': team.old_rank,
                     'rank': team.rank,
                     'teams': compute_overtaken_teams(team, race.teams.values())
                 })
         
-        tasks.append(asyncio.ensure_future(notifier.broadcastEvents()))
+        tasks.append(asyncio.ensure_future(notifier.broadcast_events()))
 
         # Waits for all async tasks    
         if len(tasks) > 0:
