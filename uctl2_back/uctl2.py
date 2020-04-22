@@ -12,7 +12,7 @@ from uctl2_back import uctl2_race
 from uctl2_back.config import Config
 from uctl2_back.exceptions import InvalidConfigError, RaceError
 from uctl2_back.notifier import Notifier
-from uctl2_back.uctl2_setup import readRace
+from uctl2_back.uctl2_setup import read_race
 
 root_logger = logging.getLogger()
 
@@ -107,7 +107,7 @@ def setup(config: Config, handlers: List[logging.Handler]=[], loop=asyncio.get_e
     root_logger.setLevel(logging.INFO)
 
     try:
-        race = readRace(config)
+        race = read_race(config)
     except RaceError as e:
         root_logger.error(e)
         return False

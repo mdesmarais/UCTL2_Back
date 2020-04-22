@@ -4,7 +4,7 @@ import time
 from typing import TYPE_CHECKING, Optional
 
 from uctl2_back import events
-from uctl2_back.race_state import RaceState, RaceStatus, read_race_state_from_file, read_race_state_from_url
+from uctl2_back.race_state import RaceState, RaceStatus, read_race_state_from_file
 from uctl2_back.team import Team
 
 if TYPE_CHECKING:
@@ -63,9 +63,9 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
             # Sends the first race state (initial informations) to all connected clients
             tasks.append(notifier.broadcastEvent(events.RACE_SETUP, race.serialize()))
 
-        if state.status_changed():
+        if state.status.has_changed:
             logger.debug('New race status : %s', state.status)
-            race.status = state.status
+            race.status = state.status.get_value()
 
             if state.status == RaceStatus.RUNNING:
                 # Updates race starting time with the current timestamp

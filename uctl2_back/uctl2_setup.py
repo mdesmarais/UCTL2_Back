@@ -110,7 +110,7 @@ def group_racepoints(points: PointsWithDistance, stages: List[Stage]) -> List[Po
     return racepoints_with_stages
 
 
-def readRace(config: Config) -> Race:
+def read_race(config: Config) -> Race:
     """
         Reads informations about the race in the given config
 
