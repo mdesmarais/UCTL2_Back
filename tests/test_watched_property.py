@@ -22,3 +22,5 @@ def test_watched_property():
 
     p2.set_value('test')
     assert p2.get_value() == 'test'
+
+    assert 'test' == p2

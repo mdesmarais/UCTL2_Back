@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, List, Iterable, Optional, Tuple
 import aiohttp
 
 from uctl2_back import race_file
-from uctl2_back.exceptions import RaceFileFieldError
+from uctl2_back.exceptions import RaceEmptyError, RaceFileFieldError
 from uctl2_back.team_state import TeamState
 from uctl2_back.watched_property import WatchedProperty
 
@@ -71,7 +71,6 @@ def compute_covered_distance(team_state: TeamState, team_finished: bool, stages:
     if default_pace <= 0:
         raise ValueError('default pace must be strictely positive')
 
-    current_stage_index: int = team_state.current_stage.get_value()
     intermediate_times = team_state.intermediate_times
     split_times = team_state.split_times
     start_time = team_state.start_time
@@ -86,6 +85,8 @@ def compute_covered_distance(team_state: TeamState, team_finished: bool, stages:
     if len(split_times) == 0:
         # Default pace when we don't known each team's pace yet
         return team_state.covered_distance + loop_time * tick_step * 1000 / default_pace
+
+    current_stage_index: int = team_state.current_stage.get_value()
 
     # Computing the covered distance since the last loop (step distance)
     if team_state.current_stage.has_changed:
@@ -290,7 +291,7 @@ def read_race_state(reader: Iterable[race_file.Record], config: 'Config', loop_t
         race_state.teams.append(team_state)
 
     if index == 0:
-        return None
+        raise RaceEmptyError('coup dur')
     
     # Updating the status of the race for the current state
     race_state.status.set_value(get_race_status(race_started, race_finished))
