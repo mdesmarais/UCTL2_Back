@@ -5,16 +5,22 @@ class InvalidConfigError(Exception):
     """
     pass
 
+class RaceEmptyError(Exception):
+    """
+        Exception raised when the race file is empty
+    """
+    pass
+
 class RaceError(Exception):
     """
-        Exception thrown when race informations could not been read
+        Exception raised when race informations could not been read
         from the config file
     """
     pass
 
 class RaceFileFieldError(Exception):
     """
-        Exception thrown when there were an error while
+        Exception raised when there were an error while
         retreiving a column from a row of a race file.
     """
     pass

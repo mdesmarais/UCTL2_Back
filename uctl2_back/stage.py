@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 
 class Stage:
 
@@ -23,5 +25,10 @@ class Stage:
         self.length = length
         self.is_timed = is_timed
 
-    def serialize(self):
-        return self.__dict__
+    def serialize(self) -> Dict[str, Any]:
+        return {
+            'name': self.name,
+            'start': self.dst_from_start,
+            'length': self.length,
+            'timed': self.is_timed
+        }

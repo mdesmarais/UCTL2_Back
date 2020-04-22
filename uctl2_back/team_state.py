@@ -28,7 +28,7 @@ class TeamState:
         self.name = name
         self.lastState = last_state
 
-        self.current_stage = WatchedProperty(0)
+        self.current_stage = WatchedProperty(None)
         self.rank = WatchedProperty(0)
         self.team_finished = WatchedProperty(False)
 

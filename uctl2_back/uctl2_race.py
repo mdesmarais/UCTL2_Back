@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Iterable, List, Optional
 
 from uctl2_back import events
 from uctl2_back.race_state import RaceState, RaceStatus, read_race_state_from_file
@@ -137,7 +137,7 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
                     'bibNumber': team.bib_number,
                     'oldRank': team.old_rank,
                     'rank': team.rank,
-                    'teams': compute_overtaken_teams(team, race.teams)
+                    'teams': compute_overtaken_teams(team, race.teams.values())
                 })
         
         tasks.append(asyncio.ensure_future(notifier.broadcastEvents()))
@@ -154,11 +154,11 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
     logger.info('End of the broadcast')
 
 
-def compute_overtaken_teams(currentTeam, teams):
+def compute_overtaken_teams(current_team: Team, teams: Iterable[Team]) -> List[int]:
     overtaken_teams = []
 
-    for team in teams.values():
-        if not currentTeam.bibNumber == team.bibNumber and currentTeam.oldRank > team.oldRank and currentTeam.rank < team.rank:
-            overtaken_teams.append(team.bibNumber)
+    for team in teams:
+        if not current_team.bib_number == team.bib_number and current_team.old_rank > team.old_rank and current_team.rank < team.rank:
+            overtaken_teams.append(team.bib_number)
     
     return overtaken_teams
