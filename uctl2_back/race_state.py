@@ -219,8 +219,6 @@ def read_race_state(reader: Iterable[race_file.Record], config: 'Config', loop_t
     race_started = False
     race_finished = True
 
-    index = 0
-
     for index, record in enumerate(reader):
         if last_state is None:
             race_state.stages_number = race_file.computeCheckpointsNumber(record)

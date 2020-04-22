@@ -205,7 +205,7 @@ class Simulator:
             'race_distance': self.race_distance,
             'race_duration': self.race_duration,
             'race_name': self.race_name,
-            'race_stages': list(self.race_stages),
+            'race_stages': [stage.serialize() for stage in self.race_stages],
             'race_teams': list(self.race_teams),
             'start_time': self.start_time.timestamp() if self.start_time else 0
         }

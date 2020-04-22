@@ -9,6 +9,9 @@ class WatchedProperty:
         self._value = initial_value
         self._old_value: Optional[T] = initial_value
 
+    def __eq__(self, o):
+        return self._value == o
+
     def get_value(self) -> T:
         """
             Gets the value of a property

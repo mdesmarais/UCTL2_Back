@@ -73,7 +73,7 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
 
             event = {
                 'race': config.race_name,
-                'status': state.status,
+                'status': state.status.get_value(),
                 'startTime': race.startTime,
                 'tickStep': config.tick_step
             }
