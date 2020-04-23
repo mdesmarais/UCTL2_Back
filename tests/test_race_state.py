@@ -73,6 +73,7 @@ def test_compute_covered_distance_when_TeamChangedStage(stages):
 def test_compute_covered_distance(stages):
     team_state = TeamState(1, '')
     team_state.current_stage.set_value(1)
+    team_state.current_stage.set_value(1)
     team_state.current_time_index = 0
     team_state.covered_distance = 100
 

@@ -29,7 +29,7 @@ class WatchedProperty:
     @property
     def has_changed(self) -> bool:
         """ Checks if the property has a new value """
-        return not self._value == self._old_value and not self._old_value is None
+        return not self._value == self._old_value
 
     def set_value(self, value: T) -> None:
         """

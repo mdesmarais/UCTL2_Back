@@ -175,6 +175,8 @@ def read_split_time(input: str) -> int:
         :return: duration in seconds
         :raises ValueError: if the given input has incorrect format
     """
+    if input is None:
+        print('NOIGNON')
     args = input.split(':')
 
     if len(args) < 3:

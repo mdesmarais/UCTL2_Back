@@ -73,7 +73,6 @@ class Notifier:
 
     async def _consumer_handler(self, ws: websockets.WebSocketServerProtocol, path: str) -> None:
         self.clients.add(ws)
-        print('new handler')
 
         if self.race is not None:
             await ws.send(json.dumps([{

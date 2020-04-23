@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Iterable, List, Optional
 from uctl2_back import events
 from uctl2_back.race_state import RaceState, RaceStatus, read_race_state_from_file
 from uctl2_back.team import Team
+from uctl2_back.exceptions import RaceEmptyError
 
 if TYPE_CHECKING:
     from uctl2_back.config import Config
@@ -40,8 +41,8 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
         except IOError as e:
             logger.error(e)
             break
-        except Exception as e:
-            logger.info('Waiting for race', e)
+        except RaceEmptyError:
+            logger.info('Waiting for race')
             await asyncio.sleep(REQUESTS_DELAY)
             continue
 
@@ -103,7 +104,6 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
             team.update_from_state(team_state)
 
             if team_state.current_stage.has_changed and len(team_state.intermediate_times) > 0 and not team_state.start_time is None:
-                print('POUET')
                 elapsed_time = team_state.intermediate_times[team.current_time_index] - team_state.start_time
                 team.pace = int(elapsed_time.total_seconds() * 1000 / team.covered_distance)
 

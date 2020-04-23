@@ -283,7 +283,7 @@ def read_race_state(reader: Iterable[race_file.Record], config: 'Config', loop_t
         transition_times = compute_transition_times(current_stage, started_stage_times, ended_stage_times, config.stages)
         update_stage_times(team_state, transition_times)
 
-        if race_state.status.get_value() == RaceStatus.RUNNING:
+        if race_started:
             team_state.covered_distance = compute_covered_distance(team_state, team_finished, config.stages, config.tick_step, loop_time)
         else:
             team_state.covered_distance = 0
@@ -292,8 +292,7 @@ def read_race_state(reader: Iterable[race_file.Record], config: 'Config', loop_t
 
     if len(race_state.teams) == 0:
         raise RaceEmptyError('coup dur')
-    
-    # Updating the status of the race for the current state
+
     race_state.status.set_value(get_race_status(race_started, race_finished))
 
     return race_state
