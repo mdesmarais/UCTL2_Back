@@ -1,4 +1,7 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple
+"""
+    This modules defines the Team class
+"""
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Tuple
 
 if TYPE_CHECKING:
     from uctl2_back.race import Race
@@ -40,11 +43,26 @@ class Team:
         self._current_location: Tuple[float, float] = self.race.plain_racepoints[0] if len(self.race.plain_racepoints) > 0 else (0, 0)
         self._rank: int = 0
 
+    def compute_overtaken_teams(self, teams: Iterable['Team']) -> List[int]:
+        """
+            Computes overtaken teams when team has a new rank
+
+            :param teams: list of teams in the race
+            :return: list of team bibs
+        """
+        overtaken_teams = []
+
+        for team in teams:
+            if not self.bib_number == team.bib_number and self.old_rank > team.old_rank and self.rank < team.rank:
+                overtaken_teams.append(team.bib_number)
+
+        return overtaken_teams
+
     @property
     def covered_distance(self) -> float:
         """ Get the covered distance (in meters) """
         return self._covered_distance
-    
+
     @covered_distance.setter
     def covered_distance(self, covered_distance: float) -> None:
         """
@@ -81,7 +99,7 @@ class Team:
 
         if j > 0:
             j -= 1
-        
+
         self._current_location = self.race.plain_racepoints[i + j]
 
     @property
@@ -103,7 +121,7 @@ class Team:
     def rank(self) -> int:
         """ Gets the rank of the team """
         return self._rank
-    
+
     @rank.setter
     def rank(self, rank):
         """
@@ -117,7 +135,7 @@ class Team:
 
         self.old_rank = self.rank
         self._rank = rank
-    
+
     def serialize(self) -> Dict[str, Any]:
         """
             Serializes the instance

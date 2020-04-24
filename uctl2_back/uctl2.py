@@ -1,3 +1,7 @@
+"""
+    This module defines entry functions to start
+    the broadcast
+"""
 import asyncio
 import json
 import logging
@@ -34,7 +38,7 @@ def create_default_config(path: str) -> bool:
     except Exception as e:
         print('Unable to create a default configuration', path, e)
         return False
-    
+
     return True
 
 
@@ -58,7 +62,7 @@ def load_config(path: str) -> Config:
             jsonConfig = json.load(f)
 
             config = Config.read_from_json(jsonConfig)
-        
+
         return config
     except FileNotFoundError:
         logger.error('Unable to open config file %s', path)
@@ -71,16 +75,16 @@ def load_config(path: str) -> Config:
         raise
 
 
-async def main(config, race, notifier: Notifier): 
+async def main(config, race, notifier: Notifier):
     # Starting the race file broadcasting
     uctl2_race.broadcast_running = True
     async with aiohttp.ClientSession() as session:
-        await uctl2_race.broadcastRace(race, config, notifier, session)
+        await uctl2_race.broadcast_race(race, config, notifier, session)
 
     await notifier.stop_notifier()
 
 
-def setup(config: Config, handlers: List[logging.Handler]=[], loop=asyncio.get_event_loop()) -> bool:
+def setup(config: Config, handlers: List[logging.Handler] = [], loop=asyncio.get_event_loop()) -> bool:
     """
         Initializes all required stuff before starting the broadcast
 
@@ -152,7 +156,7 @@ if __name__ == '__main__':
 
     try:
         config = load_config(os.path.abspath(sys.argv[1]))
-    except:
+    except Exception:
         sys.exit(-1)
 
     setup(config, [ch])

@@ -2,7 +2,7 @@
 CONFIG_SCHEMA = {
     'type': 'object',
     'required': [
-        'raceName', 'routeFile', 'raceFile', 'stages', 
+        'raceName', 'routeFile', 'raceFile', 'stages',
         'teams', 'encoding'
     ],
     'properties': {

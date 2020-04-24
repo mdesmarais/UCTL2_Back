@@ -40,7 +40,7 @@ def compute_distances(points: Points) -> PointsWithDistance:
             total_distance += haversine(coords_from_point(point), coords_from_point(points[i - 1])) * 1000
 
             points_with_distances.append((lat, lng, alt, int(total_distance)))
-    
+
     return points_with_distances
 
 
@@ -73,7 +73,7 @@ def extract_trackpoints(gpx: gpxpy.gpx.GPX) -> Points:
             for point in segment.points:
                 # elevation is not required for a point, we need to check if it has one before use it
                 points.append((point.latitude, point.longitude, point.elevation if point.elevation else 0))
-    
+
     return points
 
 
@@ -94,19 +94,19 @@ def group_racepoints(points: PointsWithDistance, stages: List[Stage]) -> List[Po
     # Race points are grouped by their stage
     for stage in stages:
         # d = distance from the start at the end of the stage
-        d = stage.dst_from_start + stage.length
+        target_distance = stage.dst_from_start + stage.length
         stagepoints = []
 
         # rp = (lat, lon, alt, distance from start)
-        for i, rp in enumerate(points[last_racepoint:]):
-            if rp[3] <= d:
-                stagepoints.append(rp)
+        for i, racepoint in enumerate(points[last_racepoint:]):
+            if racepoint[3] <= target_distance:
+                stagepoints.append(racepoint)
             else:
                 last_racepoint += i
                 break
 
         racepoints_with_stages.append(stagepoints)
-    
+
     return racepoints_with_stages
 
 
@@ -119,8 +119,8 @@ def read_race(config: Config) -> Race:
         :raises RaceError: if race informations can not be read from the given config
     """
     try:
-        with open(config.route_file, 'r') as fIn:
-            gpx = gpxpy.parse(fIn)
+        with open(config.route_file, 'r') as route_file:
+            gpx = gpxpy.parse(route_file)
             points = extract_trackpoints(gpx)
     except FileNotFoundError:
         raise RaceError('File does not exist')

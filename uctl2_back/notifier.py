@@ -56,7 +56,7 @@ class Notifier:
 
         while True:
             event = await self.events.get()
-            
+
             if event is None:
                 break
 

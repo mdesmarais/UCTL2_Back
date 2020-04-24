@@ -1,9 +1,11 @@
+"""
+    This modules defines the following classes : RaceState and RaceStatus.
+    It also defines functions to read the state of the race from a file
+"""
 import csv
 import datetime
 import logging
-from typing import TYPE_CHECKING, List, Iterable, Optional, Tuple
-
-import aiohttp
+from typing import TYPE_CHECKING, Iterable, List, Optional
 
 from uctl2_back import race_file
 from uctl2_back.exceptions import RaceEmptyError, RaceFileFieldError
@@ -36,7 +38,7 @@ class RaceState:
         Represents a state of the race contained in a race file
     """
 
-    def __init__(self, last_state: Optional['RaceState']=None):
+    def __init__(self, last_state: Optional['RaceState'] = None):
         self.stages_number: int = 0 if last_state is None else last_state.stages_number
         self.distance: float = 0 if last_state is None else last_state.distance
         self.teams: List[TeamState] = []
@@ -55,7 +57,7 @@ class RaceState:
 
             If given booleans are not coherent : the race is not started
             but it is finished, then :attr:`RaceStatus.UNKNOWN` will be set.
-            
+
             :param race_started: indicates whether if the race is started or not
             :param race_finished: indicates whether is the race is finished or not
         """
@@ -105,7 +107,7 @@ def compute_transition_times(current_stage_index: int, started_stage_times: Race
     return transitions
 
 
-def get_current_stage_index(started_stages:int, completed_stages: int, stages: List['Stage']) -> int:
+def get_current_stage_index(started_stages: int, completed_stages: int, stages: List['Stage']) -> int:
     """
         Finds the index of the current stage
 
@@ -135,13 +137,14 @@ def get_current_stage_index(started_stages:int, completed_stages: int, stages: L
         return 0
 
     timed_stage_index = 0
+    stage_index = 0
     for stage_index, stage in enumerate(stages):
         if timed_stage_index >= completed_stages:
             break
 
         if stage.is_timed:
             timed_stage_index += 1
-    
+
     return stage_index if started_stages == completed_stages else stage_index + 1
 
 
@@ -166,7 +169,7 @@ def read_race_state(reader: Iterable[race_file.Record], config: 'Config', loop_t
 
     for index, record in enumerate(reader):
         if last_state is None and index == 0:
-            race_state.stages_number = race_file.computeCheckpointsNumber(record)
+            race_state.stages_number = race_file.compute_checkpoints_number(record)
 
             try:
                 race_state.distance = race_file.get_key(record, race_file.DISTANCE_FORMAT, convert=float)
@@ -178,7 +181,7 @@ def read_race_state(reader: Iterable[race_file.Record], config: 'Config', loop_t
         except RaceFileFieldError as e:
             logger.error('Bib error : ', e)
             continue
-        
+
         split_times = race_file.read_split_times(record)
         stages_rank = race_file.read_stage_ranks(record)
 
@@ -191,7 +194,7 @@ def read_race_state(reader: Iterable[race_file.Record], config: 'Config', loop_t
         # Computes race state based on team state
         if team_started:
             race_started = True
-        
+
         if not team_finished:
             race_finished = False
 
@@ -242,23 +245,26 @@ def read_race_state(reader: Iterable[race_file.Record], config: 'Config', loop_t
     return race_state
 
 
-def read_race_state_from_file(file_path: str, config: 'Config', loop_time: float, last_state: Optional[RaceState]) -> RaceState:
+def read_race_state_from_file(config: 'Config', loop_time: float, last_state: Optional[RaceState]) -> RaceState:
     """
-        Extracts the current state of the race from the given race file
+        Extracts the current state of the race from the race file
+
+        The path to a race file should be in a available with
+        with :attr:`Config.race_file`.
 
         A race file is a csv file where values are separated by a tabulation (\t).
-        If the given file can not be read then None is returned.
+        If the race file can not be read then None is returned.
         If a line contains invalid data, then it is skipped.
 
         :param file_path: path to the file that contains race data
         :param loop_time: elapsed time in seconds since the last call to this function
         :param last_state: last state of the race, could be None
         :return: a state contained in the race file
-        :raises FileNotFoundError: if the given file does not exist
+        :raises FileNotFoundError: if the file does not exist
         :raises IOError: if an error occured while reading the file
     """
-    with open(config.race_file, 'r', encoding=config.encoding) as raceFile:
-        reader = csv.DictReader(raceFile, delimiter='\t')
+    with open(config.race_file, 'r', encoding=config.encoding) as race_file:
+        reader = csv.DictReader(race_file, delimiter='\t')
         return read_race_state(reader, config, loop_time, last_state)
 
 
@@ -287,4 +293,3 @@ def read_race_state_from_file(file_path: str, config: 'Config', loop_time: float
         return read_race_state(reader, config, loop_time, last_state)
     except aiohttp.client_exceptions.ServerDisconnectedError:
         return await read_race_state_from_url(file_path, config, loop_time, last_state, session, url)"""
-

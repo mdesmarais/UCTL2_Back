@@ -1,3 +1,6 @@
+"""
+    This module defines the WatchedProperty class
+"""
 from typing import Optional, TypeVar
 
 # Type aliases
@@ -5,7 +8,12 @@ T = TypeVar('T')
 
 class WatchedProperty:
 
-    def __init__(self, initial_value: Optional[T]=None) -> None:
+    """
+        Represents a property with a boolean to indicate
+        if it has been modified.
+    """
+
+    def __init__(self, initial_value: Optional[T] = None) -> None:
         self._value = initial_value
         self._old_value: Optional[T] = initial_value
 
@@ -23,7 +31,7 @@ class WatchedProperty:
         """
         if not self._value is None:
             return self._value
-        
+
         raise ValueError('property is not initialized')
 
     @property

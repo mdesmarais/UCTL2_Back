@@ -1,5 +1,7 @@
+"""
+    This module defines the TeamState class
+"""
 import collections
-import json
 from typing import TYPE_CHECKING, List, Optional
 
 from uctl2_back.watched_property import WatchedProperty
@@ -12,7 +14,13 @@ TransitionTime = collections.namedtuple('TransitionTime', ['split_time', 'inter_
 
 class TeamState:
 
-    def __init__(self, bib_number: int, name: str, last_state: Optional['TeamState']=None):
+    """
+        Represents the state of a team in a race file
+
+        A state is a line in the race file
+    """
+
+    def __init__(self, bib_number: int, name: str, last_state: Optional['TeamState'] = None):
         """
             Creates a new team state
 
@@ -29,29 +37,28 @@ class TeamState:
 
         self.bib_number = bib_number
         self.name = name
-        self.lastState = last_state
 
         self.current_stage: WatchedProperty = last_state.current_stage if last_state else WatchedProperty(None)
         self.rank = WatchedProperty(0)
         self.team_finished: WatchedProperty = WatchedProperty(last_state.team_finished.get_value() if last_state else False)
 
-        self.start_time: Optional[datetime] = None
+        self.start_time: Optional['datetime'] = None
         self.covered_distance: float = 0 if last_state is None else last_state.covered_distance
-        self.intermediate_times: List[datetime] = []
+        self.intermediate_times: List['datetime'] = []
         self.split_times: List[int] = []
         self.stage_ranks: List[int] = []
         self.current_time_index = -1
 
-    def update_covered_distance(self, stages: List['Stage'], tick_step: int, loop_time: float, default_pace: int=300) -> None:
+    def update_covered_distance(self, stages: List['Stage'], tick_step: int, loop_time: float, default_pace: int = 300) -> None:
         """
             Updates the covered distance with an an estimated value
 
             If the team does not have started the race yet then 0 will be set.
             If the team is in the first state, then the default_pace parameter will
             be used. It the number of seconds for 1km.
-            The the team already have finished the race, the distance from start 
+            The the team already have finished the race, the distance from start
             of the last stage will be set.
-            If the team have moved into another stage, then the distance from 
+            If the team have moved into another stage, then the distance from
             the start of the current checkpoint will be set.
 
             :param stages: list of stages

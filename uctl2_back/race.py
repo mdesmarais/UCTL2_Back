@@ -1,5 +1,7 @@
-import time
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple
+"""
+    This module defines the Race class
+"""
+from typing import TYPE_CHECKING, Any, Dict, List
 
 from uctl2_back.race_state import RaceStatus
 from uctl2_back.team import Team
@@ -10,6 +12,10 @@ if TYPE_CHECKING:
 
 
 class Race:
+
+    """
+        Represents a race
+    """
 
     def __init__(self, name: str, racepoints: List['PointsWithDistance'], stages: List['Stage'], tick_step: int) -> None:
         """
@@ -41,7 +47,7 @@ class Race:
         self.racepoints = racepoints
         self.plain_racepoints = [(item[0], item[1]) for sublist in self.racepoints for item in sublist]
         self.status = RaceStatus.WAITING
-        self.startTime: int = 0
+        self.start_time: int = 0
         self.teams: Dict[int, Team] = {}
         self.stages = stages
         self.length = sum(stage.length for stage in stages if stage.is_timed)
@@ -65,7 +71,7 @@ class Race:
 
             A new instance of class Team is created to achieve that.
         """
-        for bib in self.teams.keys():
+        for bib in self.teams:
             self.teams[bib] = Team(self, bib, self.teams[bib].name)
 
     def serialize(self) -> Dict[str, Any]:
@@ -79,9 +85,8 @@ class Race:
             'distance': self.distance,
             'stages': [stage.serialize() for stage in self.stages],
             'racePoints': self.racepoints,
-            'startTime': self.startTime,
+            'startTime': self.start_time,
             'teams': list(team.serialize() for team in self.teams.values()),
             'status': self.status,
             'tickStep': self.tick_step
         }
-

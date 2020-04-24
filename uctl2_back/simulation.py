@@ -1,3 +1,6 @@
+"""
+    This module defines the Simulation class
+"""
 import datetime
 import time
 from typing import TYPE_CHECKING, Any, Callable, List, Set, Tuple
@@ -7,19 +10,46 @@ from uctl2_back.race_file import process_file
 if TYPE_CHECKING:
     from uctl2_back.simulator import Simulator
 
+# Type aliases
+StagesWithInts = List[Tuple[Set[int], Set[int]]]
+
 
 class Simulation:
 
-    def __init__(self, simulator: 'Simulator', tick_step: int):
+    """
+        Represents a Simulation
+
+        A simulation is run by a simulator with pre computed times
+    """
+
+    def __init__(self, simulator: 'Simulator', tick_step: int) -> None:
+        """
+            Creates a new Simulation instance
+
+            The tick_step parameter must be strictely positive.
+
+            :param simulator: instance of the simulator that will run the simulation
+            :param tick_step: speed of the simulation
+            :raises ValueError: if tick_step is negative
+        """
+        if tick_step <= 0:
+            raise ValueError('tick step must be strictely positive')
+
         self.simulator = simulator
         self.tick_step = tick_step
 
-        self.stages_with_times: List[Tuple[Set[int], Set[int]]] = [(set(), set()) for stage in simulator.race_stages if stage.is_timed]
+        self.stages_with_times: StagesWithInts = [(set(), set()) for stage in simulator.race_stages if stage.is_timed]
         self.race_time = simulator.start_time
         self.remaining_teams = list(simulator.race_teams)
         self.running = False
 
-    def run(self, on_file_updated: Callable[[List[Any]], Any]=None, on_race_finished=Callable[[], Any]):
+    def run(self, on_file_updated: Callable[[List[Any]], Any] = None, on_race_finished=Callable[[], Any]) -> None:
+        """
+            Runs the simulation
+
+            :param on_file_updated: callback to a function to call when the file is updated
+            :param on_race_finished: callback to a function to call when the race is over
+        """
         last_call = time.time()
         self.running = True
 

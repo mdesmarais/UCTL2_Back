@@ -1,8 +1,13 @@
 import csv
 import datetime
-from typing import Any, Callable, Dict, List, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, TypeVar
 
 from uctl2_back.exceptions import RaceFileFieldError
+
+if TYPE_CHECKING:
+    from uctl2_back.simulation import StagesWithInts
+    from uctl2_back.simulator import Simulator
+    from uctl2_back.stage import Stage
 
 BIB_NUMBER_FORMAT = 'Numéro'
 TEAM_NAME_FORMAT = 'Nom'
@@ -19,7 +24,7 @@ Converter = Callable[[Any], T]
 Record = Dict[str, Any]
 
 
-def computeCheckpointsNumber(record):
+def compute_checkpoints_number(record):
     """
         Computes the number of checkpoints in the given record
 
@@ -33,17 +38,17 @@ def computeCheckpointsNumber(record):
     i = 1
     # Retreiving all segments Si while Si is a valid key in record
     while True:
-        checkpointName = CHECKPOINT_NAME_FORMAT % (i, )
-        
-        if checkpointName in record:
+        checkpoint_name = CHECKPOINT_NAME_FORMAT % (i, )
+
+        if checkpoint_name in record:
             i += 1
         else:
             break
-    
+
     return i - 1
 
 
-def get_key(container: Record, key: str, convert: Optional[Converter]=None) -> T:
+def get_key(container: Record, key: str, convert: Optional[Converter] = None) -> T:
     """
         Gets a key from a dict
 
@@ -63,7 +68,7 @@ def get_key(container: Record, key: str, convert: Optional[Converter]=None) -> T
         value = container[key]
         if convert is None:
             return value
-        
+
         return convert(value)
     except KeyError:
         raise RaceFileFieldError('The key ' + key + ' does not exist')
@@ -72,6 +77,15 @@ def get_key(container: Record, key: str, convert: Optional[Converter]=None) -> T
 
 
 def format_datetime(dt: datetime.datetime) -> str:
+    """
+        Formats a datetime into a string
+
+        The output will have the following format :
+        HH:MM:ss
+
+        :param dt: an instance of datetime class
+        :return: formatted datetime
+    """
     return '{:02}:{:02}:{:02}'.format(dt.hour, dt.minute, dt.second)
 
 def format_time(time: int) -> str:
@@ -89,7 +103,17 @@ def format_time(time: int) -> str:
 
     return '{:02}:{:02}:{:02}'.format(int(hours), int(minutes), int(seconds))
 
-def process_file(simulator, stages):
+def process_file(simulator: 'Simulator', stages: 'StagesWithInts') -> List[Dict[str, Any]]:
+    """
+        Updates a racefile with some stages for each team
+
+        This function is used with a simulator.
+        The simulator must have its lists headers and rows
+        update to date.
+
+        :param simulator: an instance to the Simulator class
+        :return: new rows for the racefile
+    """
     rows = []
 
     with open(simulator.race_file, 'w') as f:
@@ -98,7 +122,7 @@ def process_file(simulator, stages):
 
         for team in simulator.race_teams:
             row = dict(simulator.rows[team['bibNumber']])
-            
+
             for i, stage in enumerate(stages):
                 stage_cols = stage_columns(i + 1)
 
@@ -164,20 +188,20 @@ def read_stage_start_times(record: Record) -> List[datetime.datetime]:
     return read_values(record, STAGE_START_FORMAT, convert=read_time)
 
 
-def read_split_time(input: str) -> int:
+def read_split_time(raw_input: str) -> int:
     """
         Formats a string into a duration in seconds
 
-        The input must have the format : HH:MM:ss
+        raw_input must have the format : HH:MM:ss
         A ValueError exception will be raised if it is not the case
 
-        :param input: input with the correct format
+        :param raw_input: input with the correct format
         :return: duration in seconds
         :raises ValueError: if the given input has incorrect format
     """
-    if input is None:
+    if raw_input is None:
         print('NOIGNON')
-    args = input.split(':')
+    args = raw_input.split(':')
 
     if len(args) < 3:
         raise ValueError('Incorrect format')
@@ -185,22 +209,35 @@ def read_split_time(input: str) -> int:
     return int(args[0]) * 3600 + int(args[1]) * 60 + int(args[2])
 
 
-def read_time(input: str) -> datetime.datetime:
-    date = datetime.date.today()
-    return datetime.datetime.strptime(input, '%H:%M:%S').replace(year=date.year, month=date.month, day=date.day)
+def read_time(raw_input: str, base_date=datetime.date.today()) -> datetime.datetime:
+    """
+        Extracts a datetime from a string
+
+        The base_date is used to set the wanted
+        year, month and day.
+
+        Hours, minutes and seconds will be replaced with
+        the extracted values from the given string.
+
+        :param raw_input: a string
+        :param base_date: used to set the date
+        :return: a datetime
+        :raises ValueError: if the given string is not a time
+    """
+    return datetime.datetime.strptime(raw_input, '%H:%M:%S').replace(year=base_date.year, month=base_date.month, day=base_date.day)
 
 
-def read_values(record: Dict[str, Any], format: str, convert: Converter=str) -> List[T]:
+def read_values(record: Dict[str, Any], output_format: str, convert: Converter = str) -> List[T]:
     """
         Extracts values from the record that have a key in the given format
 
-        The format parameter is a string that has only one string parameter 
+        The output_format parameter is a string that has only one string parameter
         it should be an int.
 
         If the value can not be converted then it wont be added to the list
 
         :param record: dictionnary like
-        :param format: format of the key
+        :param output_format: format of the key
         :param convert: function used to convert value
         :return: list of values
     """
@@ -208,7 +245,7 @@ def read_values(record: Dict[str, Any], format: str, convert: Converter=str) -> 
 
     i = 1
     while True:
-        column = format % (i,)
+        column = output_format % (i,)
 
         if not column in record or record[column] == EMPTY_VALUE_FORMAT:
             break
@@ -217,11 +254,29 @@ def read_values(record: Dict[str, Any], format: str, convert: Converter=str) -> 
             values.append(convert(record[column]))
         except ValueError:
             continue
-        
+
         i += 1
-    
+
     return values
 
 
-def stage_columns(index):
-    return map(lambda x: x % (index,), ('Interm (S%d)', 'Clt Interm-1 (S%d)', '2%d|1', '3%d|1'))
+def stage_columns(index: int) -> List[str]:
+    """
+        Creates a list of stages columns for the given index
+
+        This index must be positive
+
+        A stage has many columns in a racefile:
+        * a split time
+        * a rank
+        * an entrance time
+        * a release time
+
+        :param index: index of the stage
+        :raises ValueError: if index is negative
+    """
+    if index < 0:
+        raise ValueError('index must be positive')
+
+    columns = ('Interm (S%d)', 'Clt Interm-1 (S%d)', '2%d|1', '3%d|1')
+    return [x % (index,) for x in columns]

@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 import os
 import signal
@@ -15,6 +14,7 @@ from uctl2_back.config import Config
 from uctl2_back.simulator import Simulator
 
 if TYPE_CHECKING:
+    from uctl2_back.simulation import StagesWithInts
     from uctl2_back.stage import Stage
 
 socketio = SocketIO()
@@ -39,7 +39,7 @@ def start_broadcast(config: Config) -> None:
     uctl2.setup(config, handlers=[handler], loop=loop)
 
 
-def update_racefile_thread(sim: Simulator, stages: List['Stage']) -> None:
+def update_racefile_thread(sim: Simulator, stages: 'StagesWithInts') -> None:
     """
         Updates the race file with the selected stages for each teams
 

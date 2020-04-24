@@ -1,3 +1,6 @@
+"""
+    This function defines the Simulator class
+"""
 import datetime
 import random
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
@@ -14,11 +17,16 @@ if TYPE_CHECKING:
 
 class Simulator:
 
+    """
+        A simulator computes times of an entire race
+        for every team in the config file.
+    """
+
     def __init__(self, socketio: SocketIO):
         """
             Creates a new instance of Simulator
 
-            The constructor should not be called directly, prefer using 
+            The constructor should not be called directly, prefer using
             class methods create or from_json to construct a new instance.
             Some calculations are not made in this constructor but are required
             for running simulations.
@@ -28,7 +36,7 @@ class Simulator:
         """
         self.socketio = socketio
         self.headers = ['Numéro', 'Nom', 'Distance']
-        self.rows: Dict[str, Any] = {}
+        self.rows: Dict[int, Any] = {}
         self.stages_inter_times: List[List[datetime.datetime]] = []
         self.race_file = ''
 
@@ -45,7 +53,7 @@ class Simulator:
         """
             Creates a new instance of class Simulator based on the given configuration
 
-            This method should be used to create a new instance onstead of 
+            This method should be used to create a new instance onstead of
             the class constructor.
 
             :param config: an instance to a configuration
@@ -108,7 +116,7 @@ class Simulator:
                     values['Interm (S%d)' % (j,)] = race_file.format_time(split_time)
                     values['2%d|1' % (j,)] = race_file.format_datetime(entrance_time)
                     values['3%d|1' % (j,)] = race_file.format_datetime(inter_time)
-                    j+= 1
+                    j += 1
 
             self.rows[team['bibNumber']] = values
 
@@ -147,6 +155,10 @@ class Simulator:
         return self._simulation
 
     def notify_simulation_status(self):
+        """
+            Emits an event 'sim_status_updated' with the current
+            simulation status (0=off, 1=on)
+        """
         self.socketio.emit('sim_status_updated', {
             'status': self.simulation_status
         })
@@ -179,13 +191,17 @@ class Simulator:
         self._simulation = None
 
     @property
-    def simulation_status(self):
+    def simulation_status(self) -> int:
+        """ Gets the status of the simulation (0=off, 1=on) """
         if self._simulation is None:
             return 0
-        
+
         return 1 if self._simulation.running else 0
 
-    def stop_simulation(self):
+    def stop_simulation(self) -> None:
+        """
+            Stops the simulation
+        """
         if self._simulation:
             self._simulation.running = False
 
@@ -211,5 +227,14 @@ class Simulator:
         }
 
 
-def sort_teams_times(times):
+def sort_teams_times(times: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+    """
+        Sorts split times from a list of times
+
+        The given list contains a pair of a bib and
+        a split time
+
+        :param times: list of times
+        :return: sorted times
+    """
     return sorted(times, key=lambda x: x[1])

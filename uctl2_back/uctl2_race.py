@@ -1,11 +1,14 @@
+"""
+    This modules defines a function to broadcast
+    a race file.
+"""
 import asyncio
 import logging
 import time
-from typing import TYPE_CHECKING, Iterable, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from uctl2_back import events
 from uctl2_back.race_state import RaceState, RaceStatus, read_race_state_from_file
-from uctl2_back.team import Team
 from uctl2_back.exceptions import RaceEmptyError
 
 if TYPE_CHECKING:
@@ -17,7 +20,7 @@ REQUESTS_DELAY = 2
 
 broadcast_running = True
 
-async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', session):
+async def broadcast_race(race: 'Race', config: 'Config', notifier: 'Notifier', session):
     """
         Broadcasts the state of the race from a race file
 
@@ -30,14 +33,13 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
 
     state: Optional[RaceState] = None
     first_loop = True
-    race_file = config.race_file
 
     while broadcast_running:
         loop_time = int(time.time() - current_time)
         current_time = time.time()
 
         try:
-            state = read_race_state_from_file(race_file, config, loop_time, state)
+            state = read_race_state_from_file(config, loop_time, state)
         except IOError as e:
             logger.error(e)
             break
@@ -60,7 +62,7 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
             # Initializes teams with default values (progression, position on the map, ...)
             for team_state in state.teams:
                 race.add_team(team_state.bib_number, team_state.name)
-            
+
             # Sends the first race state (initial informations) to all connected clients
             tasks.append(asyncio.ensure_future(notifier.broadcast_event(events.RACE_SETUP, race.serialize())))
 
@@ -70,12 +72,12 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
 
             if state.status == RaceStatus.RUNNING:
                 # Updates race starting time with the current timestamp
-                race.startTime = int(time.time())
+                race.start_time = int(time.time())
 
             event = {
                 'race': config.race_name,
                 'status': state.status.get_value(),
-                'startTime': race.startTime,
+                'startTime': race.start_time,
                 'tickStep': config.tick_step
             }
 
@@ -87,7 +89,7 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
                     await asyncio.wait(tasks)
 
                 await asyncio.sleep(REQUESTS_DELAY)
-                
+
                 continue
 
         # Sorts teams by their covered distance, in reverse order
@@ -132,18 +134,18 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
                     'totalTime': total_time,
                     'averagePace': average_pace
                 })
-            
+
             if team_state.rank.has_changed and team.rank < team.old_rank:
                 notifier.broadcast_event_later(events.TEAM_OVERTAKE, {
                     'bibNumber': team.bib_number,
                     'oldRank': team.old_rank,
                     'rank': team.rank,
-                    'teams': compute_overtaken_teams(team, race.teams.values())
+                    'teams': team.compute_overtaken_teams(race.teams.values())
                 })
-        
+
         tasks.append(asyncio.ensure_future(notifier.broadcast_events()))
 
-        # Waits for all async tasks    
+        # Waits for all async tasks
         if len(tasks) > 0:
             await asyncio.wait(tasks)
 
@@ -153,13 +155,3 @@ async def broadcastRace(race: 'Race', config: 'Config', notifier: 'Notifier', se
         await asyncio.sleep(REQUESTS_DELAY)
 
     logger.info('End of the broadcast')
-
-
-def compute_overtaken_teams(current_team: Team, teams: Iterable[Team]) -> List[int]:
-    overtaken_teams = []
-
-    for team in teams:
-        if not current_team.bib_number == team.bib_number and current_team.old_rank > team.old_rank and current_team.rank < team.rank:
-            overtaken_teams.append(team.bib_number)
-    
-    return overtaken_teams

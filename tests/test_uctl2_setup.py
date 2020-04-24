@@ -4,7 +4,7 @@ import gpxpy
 import pytest
 
 from uctl2_back.stage import Stage
-from uctl2_back.uctl2_setup import *
+from uctl2_back.uctl2_setup import compute_distances, coords_from_point, extract_trackpoints, group_racepoints
 
 
 @pytest.fixture

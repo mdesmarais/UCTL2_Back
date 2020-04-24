@@ -1,3 +1,6 @@
+"""
+    This module defines the Stage class
+"""
 from typing import Any, Dict
 
 
