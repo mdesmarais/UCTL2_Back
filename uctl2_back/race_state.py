@@ -1,4 +1,3 @@
-import collections
 import csv
 import datetime
 import logging
@@ -8,7 +7,7 @@ import aiohttp
 
 from uctl2_back import race_file
 from uctl2_back.exceptions import RaceEmptyError, RaceFileFieldError
-from uctl2_back.team_state import TeamState
+from uctl2_back.team_state import TeamState, TransitionTime
 from uctl2_back.watched_property import WatchedProperty
 
 if TYPE_CHECKING:
@@ -17,8 +16,6 @@ if TYPE_CHECKING:
 
 # Type alias
 RaceTimes = List[datetime.datetime]
-
-TransitionTime = collections.namedtuple('TransitionTime', ['split_time', 'inter_time', 'relative_index'])
 
 
 class RaceStatus:
@@ -47,56 +44,27 @@ class RaceState:
         # Sets default race status from the previous state (is there is one)
         self.status: WatchedProperty = WatchedProperty(RaceStatus.UNKNOWN if last_state is None else last_state.status.get_value())
 
+    def update_race_status(self, race_started: bool, race_finished: bool) -> None:
+        """
+            Updates the status of the race
 
-def compute_covered_distance(team_state: TeamState, team_finished: bool, stages: List['Stage'], tick_step: int, loop_time: float, default_pace: int=300) -> float:
-    """
-        Computes an estimated covered distance for the given team state
+            The 2 boolean parameters do not represent the real status of the race.
+            They are computed by reading the race file for each team :
+            If a team are in stage then the race is running.
+            If all teams have finished all stages then race_finished will be true.
 
-        If the team does not have started the race yet then 0 will be returned.
-        If the team is in the first state, then the default_pace parameter will
-        be used. It the number of seconds for 1km.
-        The the team already have finished the race, then the function will return
-        the distance from start of the last stage.
-        If the team have moved into another stage, then the function will
-        return the distance from the start of the current checkpoint.
-
-        :param team_state: instance of TeamState
-        :param team_finished: indicates whether or not team has finished the race
-        :param stages: list of stages
-        :param tick_step: speed of the simulation (=1 if it is a real race)
-        :param loop_time: number of seconds since the last call to the parent function
-        :param default_pace: default pace in seconds (for 1km)
-        :return: an estimated covered distance
-    """
-    if default_pace <= 0:
-        raise ValueError('default pace must be strictely positive')
-
-    intermediate_times = team_state.intermediate_times
-    split_times = team_state.split_times
-    start_time = team_state.start_time
-
-    if start_time is None:
-        return 0
-
-    if team_finished:
-        last_stage = stages[-1]
-        return last_stage.dst_from_start + last_stage.length
-
-    if len(split_times) == 0:
-        # Default pace when we don't known each team's pace yet
-        return team_state.covered_distance + loop_time * tick_step * 1000 / default_pace
-
-    current_stage_index: int = team_state.current_stage.get_value()
-
-    # Computing the covered distance since the last loop (step distance)
-    if team_state.current_stage.has_changed:
-        return stages[current_stage_index].dst_from_start
-    else:
-        stage_dst_from_start = stages[current_stage_index].dst_from_start
-
-        elapsed_time = intermediate_times[team_state.current_time_index] - start_time
-        average_speed = stage_dst_from_start / elapsed_time.total_seconds()
-        return team_state.covered_distance + average_speed * loop_time * tick_step
+            If given booleans are not coherent : the race is not started
+            but it is finished, then :attr:`RaceStatus.UNKNOWN` will be set.
+            
+            :param race_started: indicates whether if the race is started or not
+            :param race_finished: indicates whether is the race is finished or not
+        """
+        if not race_started:
+            self.status.set_value(RaceStatus.UNKNOWN if race_finished else RaceStatus.WAITING)
+        elif not race_finished:
+            self.status.set_value(RaceStatus.RUNNING)
+        else:
+            self.status.set_value(RaceStatus.FINISHED)
 
 
 def compute_transition_times(current_stage_index: int, started_stage_times: RaceTimes, ended_stage_times: RaceTimes, stages: List['Stage']) -> List[TransitionTime]:
@@ -177,31 +145,7 @@ def get_current_stage_index(started_stages:int, completed_stages: int, stages: L
     return stage_index if started_stages == completed_stages else stage_index + 1
 
 
-def get_race_status(race_started: bool, race_finished: bool) -> int:
-    """
-        Gets the status of the race
-
-        The 2 boolean parameters do not represent the real status of the race.
-        They are computed by reading the race file for each team :
-        If a team are in stage then the race is running.
-        If all teams have finished all stages then race_finished will be true.
-
-        If given booleans are not coherent : the race is not started
-        but it is finished, then :attr:`RaceStatus.UNKNOWN` will be returned.
-        
-        :param race_started: indicates whether if the race is started or not
-        :param race_finished: indicates whether is the race is finished or not
-        :return: the status of the race
-    """
-    if not race_started:
-        return RaceStatus.UNKNOWN if race_finished else RaceStatus.WAITING
-    elif not race_finished:
-        return RaceStatus.RUNNING
-    else:
-        return RaceStatus.FINISHED
-
-
-def read_race_state(reader: Iterable[race_file.Record], config: 'Config', loop_time: float, last_state: Optional[RaceState]):
+def read_race_state(reader: Iterable[race_file.Record], config: 'Config', loop_time: float, last_state: Optional[RaceState]) -> RaceState:
     """
         Extracts the state of the race from the given DictReader
 
@@ -281,10 +225,10 @@ def read_race_state(reader: Iterable[race_file.Record], config: 'Config', loop_t
         team_state.team_finished.set_value(team_finished)
 
         transition_times = compute_transition_times(current_stage, started_stage_times, ended_stage_times, config.stages)
-        update_stage_times(team_state, transition_times)
+        team_state.update_stage_times(transition_times)
 
         if race_started:
-            team_state.covered_distance = compute_covered_distance(team_state, team_finished, config.stages, config.tick_step, loop_time)
+            team_state.update_covered_distance(config.stages, config.tick_step, loop_time)
         else:
             team_state.covered_distance = 0
 
@@ -293,7 +237,7 @@ def read_race_state(reader: Iterable[race_file.Record], config: 'Config', loop_t
     if len(race_state.teams) == 0:
         raise RaceEmptyError('coup dur')
 
-    race_state.status.set_value(get_race_status(race_started, race_finished))
+    race_state.update_race_status(race_started, race_finished)
 
     return race_state
 
@@ -344,18 +288,3 @@ def read_race_state_from_file(file_path: str, config: 'Config', loop_time: float
     except aiohttp.client_exceptions.ServerDisconnectedError:
         return await read_race_state_from_url(file_path, config, loop_time, last_state, session, url)"""
 
-
-def update_stage_times(team_state: TeamState, transition_times: List[TransitionTime]) -> None:
-    """
-        Updates times list of a team state with transition times
-
-        Only lists :attr:`TeamState.intermediate_times`, :attr:`TeamState.split_times`, :attr:`TeamState.stage_ranks`
-        are modified. The last one will be updated with 0s : we do not compute a rank for non timed stages.
-
-        :param team_state: the state that will be updated with transition times
-        :param transition_times: transitions times to add for the given state
-    """
-    for i, transition_time in enumerate(transition_times):
-        team_state.intermediate_times.insert(transition_time.relative_index + i, transition_time.inter_time)
-        team_state.split_times.insert(transition_time.relative_index + i, transition_time.split_time)
-        team_state.stage_ranks.insert(transition_time.relative_index + i, 0)
