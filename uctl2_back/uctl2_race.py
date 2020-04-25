@@ -124,7 +124,8 @@ async def broadcast_race(race: 'Race', config: 'Config', notifier: 'Notifier', s
                     'stageRank': team.last_stage_rank
                 })
 
-            if team_state.team_finished.has_changed and team_state.team_finished:
+            if team_state.team_finished.has_changed and team_state.team_finished.get_value():
+                print(team_state.name)
                 # totalTime = sum of split times for timed stages only
                 total_time = sum((x for i, x in enumerate(team_state.split_times) if race.stages[i].is_timed))
                 average_pace = total_time * 1000 / race.length
