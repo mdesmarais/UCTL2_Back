@@ -94,7 +94,7 @@ class Team:
         j = 0
 
         # Counts the number of racepoints where the team has already been
-        while j < len(current_stagepoints) and current_stagepoints[j][3] < covered_distance:
+        while j < len(current_stagepoints) and current_stagepoints[j][3] <= covered_distance:
             j += 1
 
         if j > 0:
