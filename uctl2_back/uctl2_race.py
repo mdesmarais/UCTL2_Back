@@ -109,40 +109,16 @@ async def broadcast_race(race: 'Race', config: 'Config', notifier: 'Notifier', s
                 elapsed_time = team_state.intermediate_times[team.current_time_index] - team_state.start_time
                 team.pace = int(elapsed_time.total_seconds() * 1000 / team.covered_distance)
 
-                last_split_time = team_state.split_times[team.current_time_index]
-                # Pace computation : Xs * 1000m / segment distance (in meters)
-                average_pace = last_split_time * 1000 / race.stages[team.current_stage_index - 1].length
-
-                notifier.broadcast_event_later(events.TEAM_CHECKPOINT, {
-                    'bibNumber': team_state.bib_number,
-                    'currentStage': team.current_stage_index,
-                    'lastStage': team.current_stage_index - 1,
-                    'splitTime': last_split_time,
-                    'averagePace': average_pace,
-                    'coveredDistance': team.covered_distance,
-                    'pos': team.current_location,
-                    'stageRank': team.last_stage_rank
-                })
+                event = events.create_team_end_stage_event(team, team_state)
+                notifier.broadcast_event_later(event)
 
             if team_state.team_finished.has_changed and team_state.team_finished.get_value():
-                print(team_state.name)
-                # totalTime = sum of split times for timed stages only
-                total_time = sum((x for i, x in enumerate(team_state.split_times) if race.stages[i].is_timed))
-                average_pace = total_time * 1000 / race.length
-
-                notifier.broadcast_event_later(events.TEAM_END, {
-                    'bibNumber': team_state.bib_number,
-                    'totalTime': total_time,
-                    'averagePace': average_pace
-                })
+                event = events.create_team_end_race_event(race, team_state)
+                notifier.broadcast_event_later(event)
 
             if team_state.rank.has_changed and team.rank < team.old_rank:
-                notifier.broadcast_event_later(events.TEAM_OVERTAKE, {
-                    'bibNumber': team.bib_number,
-                    'oldRank': team.old_rank,
-                    'rank': team.rank,
-                    'teams': team.compute_overtaken_teams(race.teams.values())
-                })
+                event = events.create_team_rank_event(team)
+                notifier.broadcast_event_later(event)
 
         tasks.append(asyncio.ensure_future(notifier.broadcast_events()))
 

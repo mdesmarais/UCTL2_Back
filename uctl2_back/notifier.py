@@ -35,11 +35,8 @@ class Notifier:
         }])
 
 
-    def broadcast_event_later(self, id: int, payload: Dict[str, Any]) -> None:
-        self.delayedEvents.append({
-            'id': id,
-            'payload': payload
-        })
+    def broadcast_event_later(self, event: Dict[str, Any]) -> None:
+        self.delayedEvents.append(event)
 
     async def broadcast_events(self) -> None:
         if len(self.delayedEvents) > 0:
