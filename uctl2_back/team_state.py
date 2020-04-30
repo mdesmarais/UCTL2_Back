@@ -38,9 +38,14 @@ class TeamState:
         self.bib_number = bib_number
         self.name = name
 
-        self.current_stage: WatchedProperty = last_state.current_stage if last_state else WatchedProperty(None)
-        self.rank = WatchedProperty(0)
-        self.team_finished: WatchedProperty = WatchedProperty(last_state.team_finished.get_value() if last_state else False)
+        if last_state:
+            self.current_stage: WatchedProperty = WatchedProperty(last_state.current_stage.get_value())
+            self.rank: WatchedProperty = WatchedProperty(last_state.rank.get_value())
+            self.team_finished: WatchedProperty = WatchedProperty(last_state.team_finished.get_value())
+        else:
+            self.current_stage = WatchedProperty(None)
+            self.rank = WatchedProperty(0)
+            self.team_finished = WatchedProperty(False)
 
         self.start_time: Optional['datetime'] = None
         self.covered_distance: float = 0 if last_state is None else last_state.covered_distance
@@ -79,8 +84,11 @@ class TeamState:
             return
 
         if len(self.split_times) == 0:
-            # Default pace when we don't known each team's pace yet
-            self.covered_distance += loop_time * tick_step * 1000 / default_pace
+            if self.current_stage.has_changed:
+                self.covered_distance = 0
+            else:
+                # Default pace when we don't known each team's pace yet
+                self.covered_distance += loop_time * tick_step * 1000 / default_pace
             return
 
         current_stage_index: int = self.current_stage.get_value()

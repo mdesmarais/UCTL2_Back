@@ -59,6 +59,11 @@ class Team:
         return overtaken_teams
 
     @property
+    def current_location(self) -> Tuple[float, float]:
+        """ Gets the current gps position of the team """
+        return self._current_location
+
+    @property
     def covered_distance(self) -> float:
         """ Get the covered distance (in meters) """
         return self._covered_distance
@@ -108,11 +113,6 @@ class Team:
         return self.stage_ranks[self.current_time_index]
 
     @property
-    def current_location(self) -> Tuple[float, float]:
-        """ Gets the current gps position of the team """
-        return self._current_location
-
-    @property
     def progression(self) -> float:
         """ Get the race progression (between 0 and 1) """
         return self._progression
@@ -133,7 +133,7 @@ class Team:
         if rank <= 0:
             raise ValueError('rank must be strictely positive')
 
-        self.old_rank = self.rank
+        self.old_rank = self._rank
         self._rank = rank
 
     def serialize(self) -> Dict[str, Any]:
@@ -164,7 +164,6 @@ class Team:
 
             :param state: computed team state
         """
-        self.rank = state.rank.get_value()
         self.current_time_index = state.current_time_index
         self.current_stage_index = state.current_stage.get_value()
         self.covered_distance = state.covered_distance

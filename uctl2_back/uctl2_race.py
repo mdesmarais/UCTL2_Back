@@ -99,6 +99,8 @@ async def broadcast_race(race: 'Race', config: 'Config', notifier: 'Notifier', s
         for rank, team_state in enumerate(sorted_team_states):
             # Updates rank
             team_state.rank.set_value(rank + 1)
+            team = race.teams[team_state.bib_number]
+            team.rank = rank + 1
 
         # @TODO compute those events only for a limited number of teams
         for team_state in sorted_team_states:
@@ -117,7 +119,7 @@ async def broadcast_race(race: 'Race', config: 'Config', notifier: 'Notifier', s
                 notifier.broadcast_event_later(event)
 
             if team_state.rank.has_changed and team.rank < team.old_rank:
-                event = events.create_team_rank_event(team)
+                event = events.create_team_rank_event(team, race.teams.values())
                 notifier.broadcast_event_later(event)
 
         tasks.append(asyncio.ensure_future(notifier.broadcast_events()))

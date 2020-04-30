@@ -61,5 +61,5 @@ def test_create_team_end_stage_event(default_team, default_team_state):
 def test_create_team_rank_event(default_team, default_race):
     default_race.teams = { default_team.bib_number: default_team }
 
-    event = create_team_rank_event(default_team)
+    event = create_team_rank_event(default_team, [])
     jsonschema.validate(instance=event, schema=TEAM_OVERTAKE_SCHEMA)

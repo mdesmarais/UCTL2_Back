@@ -48,6 +48,27 @@ def test_constructor(default_race):
     assert team.current_location == (46.667297, 0.057259)
 
 
+def test_compute_overtaken_teams(default_race):
+    t1 = Team(default_race, 1, 'foo')
+    t2 = Team(default_race, 2, 'bar')
+    t3 = Team(default_race, 3, 'test')
+    t4 = Team(default_race, 4, 'hello')
+
+    t1.rank = 1
+    t1.old_rank = 3
+
+    t2.rank = 2
+    t2.old_rank = 1
+
+    t3.rank = 3
+    t3.old_rank = 2
+
+    t4.rank = 4
+    t4.old_rank = 4
+
+    assert set([2, 3]) == set(t1.compute_overtaken_teams([t1, t2, t3, t4]))
+
+
 def test_covered_distance_should_RaiseValueError_when_GivenNegativeDistance(default_race):
     team = Team(default_race, 1, 'foo')
 
@@ -98,6 +119,17 @@ def test_covered_distance_should_UpdateProgression(default_race):
 
     team.covered_distance = 100
     assert team.progression > p3
+
+
+def test_rank(default_race):
+    team = Team(default_race, 1, 'foo')
+    team.rank = 1
+
+    assert team.rank == 1
+
+    team.rank = 2
+    assert team.rank == 2
+    assert team.old_rank == 1
 
 
 def test_serialize(default_race):

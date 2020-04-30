@@ -2,7 +2,7 @@
     This modules defines constants for events and
     functions to create them.
 """
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, Iterable
 
 if TYPE_CHECKING:
     from uctl2_back.race import Race
@@ -76,11 +76,12 @@ def create_team_end_stage_event(team: 'Team', team_state: 'TeamState') -> Dict[s
     }
 
 
-def create_team_rank_event(team: 'Team') -> Dict[str, Any]:
+def create_team_rank_event(team: 'Team', teams: Iterable['Team']) -> Dict[str, Any]:
     """
         Creates an event for notifying that team overtaken one or more teams
 
         :param team: instance of the team
+        :param teams: list of teams (running in the current race)
         :return: the event
     """
     return {
@@ -89,6 +90,6 @@ def create_team_rank_event(team: 'Team') -> Dict[str, Any]:
             'bibNumber': team.bib_number,
             'oldRank': team.old_rank,
             'rank': team.rank,
-            'teams': team.compute_overtaken_teams(team.race.teams.values())
+            'teams': team.compute_overtaken_teams(teams)
         }
     }
