@@ -72,6 +72,19 @@ class Config:
 
         return config
 
+    def serialize(self) -> Dict[str, Any]:
+        """
+            Serializes a config
+        """
+        return {
+            'raceName': self.race_name,
+            'stages': self.stages,
+            'raceFile': self.race_file,
+            'encoding': self.encoding,
+            'routeFile': self.route_file,
+            'teams': self.teams
+        }
+
 
 def validate_bibs(bibs: List[int]):
     """

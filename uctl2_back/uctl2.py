@@ -34,7 +34,7 @@ def create_default_config(path: str) -> bool:
     try:
         with open(path, 'w') as f:
             config = Config()
-            json.dump(config, f, indent=2)
+            json.dump(config.serialize(), f, indent=2)
     except Exception as e:
         print('Unable to create a default configuration', path, e)
         return False
