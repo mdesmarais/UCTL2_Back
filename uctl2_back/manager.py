@@ -132,6 +132,15 @@ def create_app(config: Config, pid: int) -> Flask:
                 socketio.start_background_task(restart_broadcast, on_file_updated=lambda rows: socketio.emit('racefile', {'rows': rows}),
                     on_race_finished=sim.notify_simulation_status)
 
+    @socketio.on('refresh')
+    def refresh_sim():
+        """
+            This event is emitted by the client when he wants
+            to generate a new race.
+        """
+        sim.compute_times()
+        emit('initialize', sim.to_json(), broadcast=True)
+
     @socketio.on('stop_sim')
     def stop_sim():
         """
