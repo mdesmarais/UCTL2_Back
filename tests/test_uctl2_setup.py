@@ -97,4 +97,4 @@ def test_group_racepoints():
     # We must have 2 stages
     assert len(result) == 2
     assert result[0] == [points[0], points[1], points[2]]
-    assert result[1] == [points[3]]
+    assert result[1] == [points[2], points[3]]

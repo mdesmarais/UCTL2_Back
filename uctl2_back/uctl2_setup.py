@@ -102,7 +102,7 @@ def group_racepoints(points: PointsWithDistance, stages: List[Stage]) -> List[Po
             if racepoint[3] <= target_distance:
                 stagepoints.append(racepoint)
             else:
-                last_racepoint += i
+                last_racepoint += i - 1 if i > 0 else 0
                 break
 
         racepoints_with_stages.append(stagepoints)
