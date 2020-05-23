@@ -51,6 +51,7 @@ class Race:
         self.teams: Dict[int, Team] = {}
         self.stages = stages
         self.length = sum(stage.length for stage in stages if stage.is_timed)
+        self.real_length = sum(stage.length for stage in stages)
         self.tick_step = tick_step
 
     def add_team(self, bib: int, name: str) -> None:
@@ -83,6 +84,7 @@ class Race:
         return {
             'name': self.name,
             'distance': self.distance,
+            'realDistance': self.real_length,
             'stages': [stage.serialize() for stage in self.stages],
             'racePoints': self.racepoints,
             'startTime': self.start_time,
