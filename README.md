@@ -20,6 +20,8 @@ L'installation de celles-ci se fait à l'aide de l'utilitaire pip : `pip install
 
 Nous conseillons l'utilisation d'un environnement virtuel pour faciliter l'installation des modules. Veuillez vous reporter sur [ce lien](https://docs.python.org/3.7/library/venv.html) pour plus d'information.
 
+Il faut également installer le projet localement pour résoudre les problèmes d'import : `pip install -e .`
+
 ## Utilisation
 
 Lancement du broadcaster :  `python uctl2_back/uctl2.py config_path`  
@@ -34,3 +36,9 @@ Un exemple de configuration est disponible dans le fichier [samples/config.json]
 La configuration doit être stockée dans un fichier au format json.
 
 Une description des champs requis dans le fichier est disponible ici : [uctl2_back/config_schema.py](src/config_schema.py). Ce lien pointe vers un fichier json qui respecte le format [JSON Schema](https://json-schema.org/). Ce dernier permet de vérifier automatiquement que la configuration fournie par l'utilisateur respecte le format attendu
+
+## Tests
+
+Les tests unitaires sont accessibles dans le dossier [tests/](tests/). Nous avons utilisé la librairie pytest. Leur exécution se fait à l'aide de la commande `pytest`.
+
+Nous avons ajouté spécifié le type de chaque définition de méthodes et d'attributs dans le code afin d'utiliser l'outil [mypy](http://mypy-lang.org/). Il permet de vérifier statiquement qu'un programme respecte bien toutes les contraintes de type. Son exécution se fait à l'aide de la commande `mypy uctl2_back`.
